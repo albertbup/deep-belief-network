@@ -2,14 +2,8 @@ import numpy as np
 
 
 class RBM():
-    def __init__(self, data, num_hidden_units):
-        self.num_visible_units = data.shape[1]
+    def __init__(self, num_hidden_units):
         self.num_hidden_units = num_hidden_units
-        self.W = np.random.randn(self.num_hidden_units, self.num_visible_units)
-        self.c = np.random.randn(self.num_hidden_units)
-        self.b = np.random.randn(self.num_visible_units)
-
-        self.fit(data)
 
     @classmethod
     def sigmoid(cls, vector):
@@ -21,6 +15,12 @@ class RBM():
         return 1 / (1.0 + np.exp(-x))
 
     def fit(self, data, algorithm='sgd', learning_rate=1.0, epochs=10):
+        # Initialize RBM parameters
+        self.num_visible_units = data.shape[1]
+        self.W = np.random.randn(self.num_hidden_units, self.num_visible_units)
+        self.c = np.random.randn(self.num_hidden_units)
+        self.b = np.random.randn(self.num_visible_units)
+
         if algorithm is 'sgd':
             self.__stochastic_gradient_descent(data, learning_rate, epochs)
 
@@ -49,8 +49,7 @@ class RBM():
                 self.b += learning_rate * delta_b
                 self.c += learning_rate * delta_c
             error = self.__compute_reconstruction_error(data)
-            print ">> Epoch %d finished" % it
-            print ">> Reconstruction error %f finished" % error
+            print ">> Epoch %d finished \tReconstruction error %f" % (it, error)
 
     def __contrastive_divergence(self, vector_visible_units, k=1):
         delta_W = np.zeros([self.num_hidden_units, self.num_visible_units])
