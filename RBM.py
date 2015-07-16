@@ -24,21 +24,33 @@ class RBM():
         if algorithm is 'sgd':
             self.__stochastic_gradient_descent(data, learning_rate, epochs)
 
-    def transform(self):
-        return
+    def transform(self, data):
+        transformed_data = np.zeros([data.shape[0], self.num_hidden_units])
+        i = 0
+        for sample in data:
+            transformed_data[i, :] = self.__compute_hidden_units(sample)
+            i += 1
+        return transformed_data
+
+    def __reconstruct(self, transformed_data):
+        reconstructed_data = np.zeros([transformed_data.shape[0], self.num_visible_units])
+        i = 0
+        for sample in transformed_data:
+            reconstructed_data[i, :] = self.__compute_visible_units(sample)
+            i += 1
+        return reconstructed_data
 
     def __stochastic_gradient_descent(self, data, learning_rate, iterations):
         for it in range(1, iterations + 1):
             np.random.shuffle(data)
-            #W0 = np.copy(self.W)
             for sample in data:
                 delta_W, delta_b, delta_c = self.__contrastive_divergence(sample)
                 self.W += learning_rate * delta_W
                 self.b += learning_rate * delta_b
                 self.c += learning_rate * delta_c
-            #diff = np.mean(np.abs(W0 - self.W))
-            #print ">> Mean diff %f finished" % diff
+            error = self.__compute_reconstruction_error(data)
             print ">> Epoch %d finished" % it
+            print ">> Reconstruction error %f finished" % error
 
     def __contrastive_divergence(self, vector_visible_units, k=1):
         delta_W = np.zeros([self.num_hidden_units, self.num_visible_units])
@@ -72,3 +84,20 @@ class RBM():
     def __compute_visible_units(self, vector_hidden_units):
         h = vector_hidden_units
         return self.__sigmoid(np.dot(h, self.W) + self.b)
+
+    def __compute_free_energy(self, vector_visible_units):
+        v = vector_visible_units
+        h = self.__compute_hidden_units(v)
+        energy = - np.dot(self.b, v) - np.sum(np.log(1 + np.exp(h)))
+        return energy
+
+    def __compute_reconstruction_error(self, data):
+        data_transformed = self.transform(data)
+        data_reconstructed = self.__reconstruct(data_transformed)
+        error = 0.
+        i = 0
+        for reconstructed_sample in data_reconstructed:
+            original_sample = data[i, :]
+            error += np.linalg.norm(reconstructed_sample - original_sample)
+            i += 1
+        return error
