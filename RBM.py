@@ -68,9 +68,7 @@ class RBM():
         h_0 = self.__compute_hidden_units(v_0)
         h_k = self.__compute_hidden_units(v_k)
         for i in range(self.num_hidden_units):
-            for j in range(self.num_visible_units):
-                delta_W[i][j] += h_0[i] * v_0[j] - h_k[i] * v_k[j]
-
+            delta_W[i, :] = h_0[i] * v_0 - h_k[i] * v_k
         delta_b += v_0 - v_k
         delta_c += h_0 - h_k
 
