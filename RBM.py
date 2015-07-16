@@ -91,10 +91,4 @@ class RBM():
     def __compute_reconstruction_error(self, data):
         data_transformed = self.transform(data)
         data_reconstructed = self.__reconstruct(data_transformed)
-        error = 0.
-        i = 0
-        for reconstructed_sample in data_reconstructed:
-            original_sample = data[i, :]
-            error += np.linalg.norm(reconstructed_sample - original_sample)
-            i += 1
-        return error
+        return np.sum(np.linalg.norm(data_reconstructed - data, axis=1))
