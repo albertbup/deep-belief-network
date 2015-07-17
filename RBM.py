@@ -23,6 +23,7 @@ class RBM():
 
         if algorithm is 'sgd':
             self.__stochastic_gradient_descent(data, learning_rate, epochs)
+        return self
 
     def transform(self, data):
         transformed_data = np.zeros([data.shape[0], self.num_hidden_units])
@@ -40,7 +41,8 @@ class RBM():
             i += 1
         return reconstructed_data
 
-    def __stochastic_gradient_descent(self, data, learning_rate, iterations):
+    def __stochastic_gradient_descent(self, _data, learning_rate, iterations):
+        data = np.copy(_data)
         for it in range(1, iterations + 1):
             np.random.shuffle(data)
             for sample in data:
