@@ -1,5 +1,5 @@
 # DeepBeliefNet
-A simple, clean Python implementation of Deep Belief Network based on 
+A simple, clean Python implementation of Deep Belief Networks with binary units based on 
 > Fischer, Asja, and Christian Igel. "Training restricted Boltzmann machines: an introduction." Pattern Recognition 47.1 (2014): 25-39.
 
 ## Usage
