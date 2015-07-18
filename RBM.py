@@ -2,8 +2,11 @@ import numpy as np
 
 
 class RBM():
-    def __init__(self, num_hidden_units):
+    def __init__(self, num_hidden_units=200, optimization_algorithm='sgd', learning_rate=0.3, num_epochs=10):
         self.num_hidden_units = num_hidden_units
+        self.optimization_algorithm = optimization_algorithm
+        self.learning_rate = learning_rate
+        self.num_epochs = num_epochs
 
     @classmethod
     def sigmoid(cls, vector):
@@ -14,15 +17,15 @@ class RBM():
     def __sigmoid(cls, x):
         return 1 / (1.0 + np.exp(-x))
 
-    def fit(self, data, algorithm='sgd', learning_rate=1.0, epochs=10):
+    def fit(self, data):
         # Initialize RBM parameters
         self.num_visible_units = data.shape[1]
         self.W = np.random.randn(self.num_hidden_units, self.num_visible_units)
         self.c = np.random.randn(self.num_hidden_units)
         self.b = np.random.randn(self.num_visible_units)
 
-        if algorithm is 'sgd':
-            self.__stochastic_gradient_descent(data, learning_rate, epochs)
+        if self.optimization_algorithm is 'sgd':
+            self.__stochastic_gradient_descent(data, self.learning_rate, self.num_epochs)
         return self
 
     def transform(self, data):
@@ -43,7 +46,7 @@ class RBM():
 
     def __stochastic_gradient_descent(self, _data, learning_rate, iterations):
         data = np.copy(_data)
-        for it in range(1, iterations + 1):
+        for iteration in range(1, iterations + 1):
             np.random.shuffle(data)
             for sample in data:
                 delta_W, delta_b, delta_c = self.__contrastive_divergence(sample)
@@ -51,7 +54,7 @@ class RBM():
                 self.b += learning_rate * delta_b
                 self.c += learning_rate * delta_c
             error = self.__compute_reconstruction_error(data)
-            print ">> Epoch %d finished \tReconstruction error %f" % (it, error)
+            print ">> Epoch %d finished \tReconstruction error %f" % (iteration, error)
 
     def __contrastive_divergence(self, vector_visible_units, k=1):
         delta_W = np.zeros([self.num_hidden_units, self.num_visible_units])
