@@ -29,6 +29,9 @@ class RBM():
         return self
 
     def transform(self, data):
+        if len(data.shape) is 1:    # It is a single sample
+            sample = data
+            return self.__compute_hidden_units(sample)
         transformed_data = np.zeros([data.shape[0], self.num_hidden_units])
         i = 0
         for sample in data:
