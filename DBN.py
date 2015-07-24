@@ -4,13 +4,15 @@ from RBM import RBM
 
 
 class DBN():
-    def __init__(self, hidden_layers_structure, optimization_algorithm='sgd', learning_rate=0.3, num_epochs=10):
+    def __init__(self, hidden_layers_structure, optimization_algorithm='sgd', learning_rate=0.3, num_epochs=10,
+                 lambda_param=0.1):
         self.RBM_layers = [RBM(num_hidden_units=num_hidden_units, optimization_algorithm=optimization_algorithm,
                                learning_rate=learning_rate, num_epochs=num_epochs) for num_hidden_units in
                            hidden_layers_structure]
         self.optimization_algorithm = optimization_algorithm
         self.learning_rate = learning_rate
         self.num_epochs = num_epochs
+        self.lambda_param = lambda_param
 
     def fit(self, data, labels=None):
         input_data = data
@@ -48,18 +50,23 @@ class DBN():
     def __stochastic_gradient_descent(self, _data, _labels):
         data = np.copy(_data)
         labels = np.copy(_labels)
+        matrix_error = np.zeros([len(_data), self.num_classes])
         for iteration in range(1, self.num_epochs + 1):
             idx = np.random.permutation(len(data))
             data = data[idx]
             labels = labels[idx]
-            matrix_error = np.zeros(data.shape)
             i = 0
             for sample, label in zip(data, labels):
                 delta_W, delta_bias, error_vector = self.__backpropagation(sample, label)
-                # TODO update parameters
-                # self.W += learning_rate * delta_W
-                # self.b += learning_rate * delta_b
-                # self.c += learning_rate * delta_c
+                # Updating parameters of hidden layers
+                layer = 0
+                for rbm in self.RBM_layers:
+                    rbm.W += - self.learning_rate * (delta_W[layer] + self.lambda_param * rbm.W)
+                    rbm.c += - self.learning_rate * delta_bias[layer]
+                    layer += 1
+                # Updating parameters of output layer
+                self.W += - self.learning_rate * (delta_W[layer] + self.lambda_param * self.W)
+                self.b += - self.learning_rate * delta_bias[layer]
                 matrix_error[i, :] = error_vector
                 i += 1
             error = np.sum(np.linalg.norm(matrix_error, axis=1))
@@ -78,7 +85,7 @@ class DBN():
 
         # Backward pass: computing deltas
         activation_output_layer = layers_activation[-1]
-        delta_output_layer = (activation_output_layer - y)
+        delta_output_layer = (activation_output_layer - y) * (activation_output_layer * (1 - activation_output_layer))
         deltas.append(delta_output_layer)
         layer_idx = range(len(self.RBM_layers))
         layer_idx.reverse()
@@ -97,12 +104,9 @@ class DBN():
         layer_gradient_weights = list()
         layer_gradient_bias = list()
         for layer in range(len(list_layer_weights)):
-            W = list_layer_weights[layer]
-            gradient_W = np.zeros(W.shape)
             neuron_activations = layers_activation[layer]
-            for j in range(len(neuron_activations)):
-                gradient_W[:, j] = deltas[layer] * neuron_activations[j]
-            gradient_W2 = np.outer(deltas[layer], neuron_activations)  # TODO check this
+            delta = deltas[layer]
+            gradient_W = np.outer(delta, neuron_activations)  # TODO check this
             layer_gradient_weights.append(gradient_W)
             layer_gradient_bias.append(deltas[layer])
 
@@ -117,7 +121,6 @@ class DBN():
 
         if self.optimization_algorithm is 'sgd':
             self.__stochastic_gradient_descent(data, labels)
-        return
 
     def __transform_labels_to_network_format(self, labels):
         new_labels = np.zeros([len(labels), self.num_classes])
