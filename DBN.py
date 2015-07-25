@@ -123,7 +123,7 @@ class DBN():
             layer_gradient_weights.append(gradient_W)
             layer_gradient_bias.append(deltas[layer])
 
-        return layer_gradient_weights, layer_gradient_bias, delta_output_layer
+        return layer_gradient_weights, layer_gradient_bias, np.abs(y - activation_output_layer)
 
     def __fine_tuning(self, data, _labels):
         self.num_classes = len(np.unique(_labels))
