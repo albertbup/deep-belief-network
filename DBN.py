@@ -31,7 +31,17 @@ class DBN():
         return input_data
 
     def predict(self, data):
-        return
+        transformed_data = self.transform(data)
+        if len(data.shape) is 1:  # It is a single sample
+            sample = transformed_data
+            return self.__compute_output_units(sample)
+
+        predicted_data = np.zeros([data.shape[0], self.num_classes])
+        i = 0
+        for sample in transformed_data:
+            predicted_data[i, :] = self.__compute_output_units(sample)
+            i += 1
+        return predicted_data
 
     def __compute_activations(self, sample):
         input_data = sample
@@ -42,7 +52,7 @@ class DBN():
             layers_activation.append(input_data)
 
         # Computing activation of output layer
-        input_data = RBM.sigmoid(np.dot(self.W, input_data) + self.b)
+        input_data = self.__compute_output_units(input_data)
         layers_activation.append(input_data)
 
         return layers_activation
@@ -52,7 +62,7 @@ class DBN():
         labels = np.copy(_labels)
         matrix_error = np.zeros([len(_data), self.num_classes])
         num_samples = len(_data)
-        for iteration in range(1, 50 + 1):
+        for iteration in range(1, 100 + 1):
             idx = np.random.permutation(len(data))
             data = data[idx]
             labels = labels[idx]
@@ -116,7 +126,7 @@ class DBN():
         return layer_gradient_weights, layer_gradient_bias, delta_output_layer
 
     def __fine_tuning(self, data, _labels):
-        self.num_classes = len(np.unique(_labels))  # TODO Possible bug here
+        self.num_classes = len(np.unique(_labels))
         self.W = np.random.randn(self.num_classes, self.RBM_layers[-1].num_hidden_units)
         self.b = np.random.randn(self.num_classes)
 
@@ -132,3 +142,7 @@ class DBN():
             new_labels[i][label] = 1
             i += 1
         return new_labels
+
+    def __compute_output_units(self, vector_visible_units):
+        v = vector_visible_units
+        return RBM.sigmoid(np.dot(self.W, v) + self.b)
