@@ -60,9 +60,6 @@ class RBM():
             print ">> Epoch %d finished \tReconstruction error %f" % (iteration, error)
 
     def __contrastive_divergence(self, vector_visible_units, k=1):
-        delta_W = np.zeros([self.num_hidden_units, self.num_visible_units])
-        delta_b = np.zeros(self.num_visible_units)
-        delta_c = np.zeros(self.num_hidden_units)
         v_0 = vector_visible_units
         v_t = np.copy(v_0)
 
@@ -75,10 +72,9 @@ class RBM():
         v_k = v_t
         h_0 = self.__compute_hidden_units(v_0)
         h_k = self.__compute_hidden_units(v_k)
-        for i in range(self.num_hidden_units):
-            delta_W[i, :] = h_0[i] * v_0 - h_k[i] * v_k
-        delta_b += v_0 - v_k
-        delta_c += h_0 - h_k
+        delta_W = np.outer(h_0, v_0) - np.outer(h_k, v_k)
+        delta_b = v_0 - v_k
+        delta_c = h_0 - h_k
 
         return delta_W, delta_b, delta_c
 
