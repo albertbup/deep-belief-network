@@ -2,11 +2,12 @@ import numpy as np
 
 
 class RBM():
-    def __init__(self, num_hidden_units=200, optimization_algorithm='sgd', learning_rate=0.3, num_epochs=10):
+    def __init__(self, num_hidden_units=200, optimization_algorithm='sgd', learning_rate=0.3, max_epochs=10, k=1):
         self.num_hidden_units = num_hidden_units
         self.optimization_algorithm = optimization_algorithm
         self.learning_rate = learning_rate
-        self.num_epochs = num_epochs
+        self.max_epochs = max_epochs
+        self.k = k
 
     @classmethod
     def sigmoid(cls, vector):
@@ -49,7 +50,7 @@ class RBM():
 
     def __stochastic_gradient_descent(self, _data):
         data = np.copy(_data)
-        for iteration in range(1, self.num_epochs + 1):
+        for iteration in range(1, self.max_epochs + 1):
             np.random.shuffle(data)
             for sample in data:
                 delta_W, delta_b, delta_c = self.__contrastive_divergence(sample)
@@ -59,12 +60,12 @@ class RBM():
             error = self.__compute_reconstruction_error(data)
             print ">> Epoch %d finished \tReconstruction error %f" % (iteration, error)
 
-    def __contrastive_divergence(self, vector_visible_units, k=1):
+    def __contrastive_divergence(self, vector_visible_units):
         v_0 = vector_visible_units
         v_t = np.copy(v_0)
 
         # Sampling
-        for t in range(k):
+        for t in range(self.k):
             h_t = self.__compute_hidden_units(v_t)
             v_t = self.__compute_visible_units(h_t)
 

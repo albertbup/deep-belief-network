@@ -4,14 +4,14 @@ from RBM import RBM
 
 
 class DBN():
-    def __init__(self, hidden_layers_structure, optimization_algorithm='sgd', learning_rate=0.3, num_epochs=10,
-                 lambda_param=0.1):
+    def __init__(self, hidden_layers_structure, optimization_algorithm='sgd', learning_rate=0.3, max_iter_backprop=200,
+                 lambda_param=0.0, max_epochs_rbm=10):
         self.RBM_layers = [RBM(num_hidden_units=num_hidden_units, optimization_algorithm=optimization_algorithm,
-                               learning_rate=learning_rate, num_epochs=num_epochs) for num_hidden_units in
+                               learning_rate=learning_rate, max_epochs=max_epochs_rbm) for num_hidden_units in
                            hidden_layers_structure]
         self.optimization_algorithm = optimization_algorithm
         self.learning_rate = learning_rate
-        self.num_epochs = num_epochs
+        self.max_iter_backprop = max_iter_backprop
         self.lambda_param = lambda_param
 
     def fit(self, data, labels=None):
@@ -62,7 +62,7 @@ class DBN():
         labels = np.copy(_labels)
         matrix_error = np.zeros([len(_data), self.num_classes])
         num_samples = len(_data)
-        for iteration in range(1, 100 + 1):
+        for iteration in range(1, self.max_iter_backprop + 1):
             idx = np.random.permutation(len(data))
             data = data[idx]
             labels = labels[idx]
