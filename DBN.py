@@ -121,7 +121,7 @@ class DBN():
             delta = deltas[layer]
             gradient_W = np.outer(delta, neuron_activations)
             layer_gradient_weights.append(gradient_W)
-            layer_gradient_bias.append(deltas[layer])
+            layer_gradient_bias.append(delta)
 
         return layer_gradient_weights, layer_gradient_bias, np.abs(y - activation_output_layer)
 
