@@ -51,7 +51,8 @@ class DBN():
         data = np.copy(_data)
         labels = np.copy(_labels)
         matrix_error = np.zeros([len(_data), self.num_classes])
-        for iteration in range(1, self.num_epochs + 1):
+        num_samples = len(_data)
+        for iteration in range(1, 50 + 1):
             idx = np.random.permutation(len(data))
             data = data[idx]
             labels = labels[idx]
@@ -61,12 +62,14 @@ class DBN():
                 # Updating parameters of hidden layers
                 layer = 0
                 for rbm in self.RBM_layers:
-                    rbm.W += - self.learning_rate * (delta_W[layer] + self.lambda_param * rbm.W)
-                    rbm.c += - self.learning_rate * delta_bias[layer]
+                    rbm.W = (1 - (self.learning_rate * self.lambda_param) / num_samples) * rbm.W - self.learning_rate * \
+                                                                                                   delta_W[layer]
+                    rbm.c -= self.learning_rate * delta_bias[layer]
                     layer += 1
                 # Updating parameters of output layer
-                self.W += - self.learning_rate * (delta_W[layer] + self.lambda_param * self.W)
-                self.b += - self.learning_rate * delta_bias[layer]
+                self.W = (1 - (self.learning_rate * self.lambda_param) / num_samples) * self.W - self.learning_rate * \
+                                                                                                 delta_W[layer]
+                self.b -= self.learning_rate * delta_bias[layer]
                 matrix_error[i, :] = error_vector
                 i += 1
             error = np.sum(np.linalg.norm(matrix_error, axis=1))
@@ -85,7 +88,7 @@ class DBN():
 
         # Backward pass: computing deltas
         activation_output_layer = layers_activation[-1]
-        delta_output_layer = (activation_output_layer - y) * (activation_output_layer * (1 - activation_output_layer))
+        delta_output_layer = -(y - activation_output_layer) * (activation_output_layer * (1 - activation_output_layer))
         deltas.append(delta_output_layer)
         layer_idx = range(len(self.RBM_layers))
         layer_idx.reverse()
@@ -106,7 +109,7 @@ class DBN():
         for layer in range(len(list_layer_weights)):
             neuron_activations = layers_activation[layer]
             delta = deltas[layer]
-            gradient_W = np.outer(delta, neuron_activations)  # TODO check this
+            gradient_W = np.outer(delta, neuron_activations)
             layer_gradient_weights.append(gradient_W)
             layer_gradient_bias.append(deltas[layer])
 
