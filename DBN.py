@@ -1,25 +1,36 @@
 import numpy as np
+from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin
 
 from RBM import RBM
 
 
-class DBN():
-    def __init__(self, hidden_layers_structure, optimization_algorithm='sgd', learning_rate=0.3, max_iter_backprop=200,
-                 lambda_param=0.0, max_epochs_rbm=10):
-        self.RBM_layers = [RBM(num_hidden_units=num_hidden_units, optimization_algorithm=optimization_algorithm,
-                               learning_rate=learning_rate, max_epochs=max_epochs_rbm) for num_hidden_units in
-                           hidden_layers_structure]
+class DBN(BaseEstimator, TransformerMixin, ClassifierMixin):
+    def __init__(self, hidden_layers_structure=[50, 50, 200], optimization_algorithm='sgd', learning_rate=0.1,
+                 max_iter_backprop=100, lambda_param=0.0, max_epochs_rbm=10, contrastive_divergence_iter=1):
+        self.hidden_layers_structure = hidden_layers_structure
         self.optimization_algorithm = optimization_algorithm
         self.learning_rate = learning_rate
         self.max_iter_backprop = max_iter_backprop
         self.lambda_param = lambda_param
+        self.max_epochs_rbm = max_epochs_rbm
+        self.contrastive_divergence_iter = contrastive_divergence_iter
 
     def fit(self, data, labels=None):
+        # Initialize rbm layers
+        self.RBM_layers = list()
+        for num_hidden_units in self.hidden_layers_structure:
+            rbm = RBM(num_hidden_units=num_hidden_units, optimization_algorithm=self.optimization_algorithm,
+                      learning_rate=self.learning_rate, max_epochs=self.max_epochs_rbm,
+                      contrastive_divergence_iter=self.contrastive_divergence_iter)
+            self.RBM_layers.append(rbm)
+
+        # Fit RBM
         input_data = data
         for rbm in self.RBM_layers:
             rbm.fit(input_data)
             input_data = rbm.transform(input_data)
 
+        # Fine-tuning with labels
         if labels is not None:
             self.__fine_tuning(data, labels)
         return self

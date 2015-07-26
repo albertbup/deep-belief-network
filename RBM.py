@@ -2,12 +2,13 @@ import numpy as np
 
 
 class RBM():
-    def __init__(self, num_hidden_units=200, optimization_algorithm='sgd', learning_rate=0.3, max_epochs=10, k=1):
+    def __init__(self, num_hidden_units=200, optimization_algorithm='sgd', learning_rate=0.1, max_epochs=10,
+                 contrastive_divergence_iter=1):
         self.num_hidden_units = num_hidden_units
         self.optimization_algorithm = optimization_algorithm
         self.learning_rate = learning_rate
         self.max_epochs = max_epochs
-        self.k = k
+        self.contrastive_divergence_iter = contrastive_divergence_iter
 
     @classmethod
     def sigmoid(cls, vector):
@@ -65,7 +66,7 @@ class RBM():
         v_t = np.copy(v_0)
 
         # Sampling
-        for t in range(self.k):
+        for t in range(self.contrastive_divergence_iter):
             h_t = self.__compute_hidden_units(v_t)
             v_t = self.__compute_visible_units(h_t)
 
