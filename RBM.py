@@ -34,20 +34,11 @@ class RBM():
         if len(data.shape) is 1:  # It is a single sample
             sample = data
             return self.__compute_hidden_units(sample)
-        transformed_data = np.zeros([data.shape[0], self.num_hidden_units])
-        i = 0
-        for sample in data:
-            transformed_data[i, :] = self.__compute_hidden_units(sample)
-            i += 1
+        transformed_data = self.__compute_hidden_units_matrix(data)
         return transformed_data
 
     def __reconstruct(self, transformed_data):
-        reconstructed_data = np.zeros([transformed_data.shape[0], self.num_visible_units])
-        i = 0
-        for sample in transformed_data:
-            reconstructed_data[i, :] = self.__compute_visible_units(sample)
-            i += 1
-        return reconstructed_data
+        return self.__compute_visible_units_matrix(transformed_data)
 
     def __stochastic_gradient_descent(self, _data):
         data = np.copy(_data)
@@ -84,9 +75,15 @@ class RBM():
         v = vector_visible_units
         return self.__sigmoid(np.dot(self.W, v) + self.c)
 
+    def __compute_hidden_units_matrix(self, matrix_visible_units):
+        return np.transpose(RBM.sigmoid(np.dot(self.W, np.transpose(matrix_visible_units)) + self.c[:, np.newaxis]))
+
     def __compute_visible_units(self, vector_hidden_units):
         h = vector_hidden_units
         return self.__sigmoid(np.dot(h, self.W) + self.b)
+
+    def __compute_visible_units_matrix(self, matrix_hidden_units):
+        return RBM.sigmoid(np.dot(matrix_hidden_units, self.W) + self.b[np.newaxis, :])
 
     def __compute_free_energy(self, vector_visible_units):
         v = vector_visible_units

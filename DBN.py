@@ -46,12 +46,7 @@ class DBN(BaseEstimator, TransformerMixin, ClassifierMixin):
         if len(data.shape) is 1:  # It is a single sample
             sample = transformed_data
             return self.__compute_output_units(sample)
-
-        predicted_data = np.zeros([data.shape[0], self.num_classes])
-        i = 0
-        for sample in transformed_data:
-            predicted_data[i, :] = self.__compute_output_units(sample)
-            i += 1
+        predicted_data = self.__compute_output_units_matrix(transformed_data)
         labels = np.argmax(predicted_data, axis=1)
         return labels
 
@@ -158,3 +153,6 @@ class DBN(BaseEstimator, TransformerMixin, ClassifierMixin):
     def __compute_output_units(self, vector_visible_units):
         v = vector_visible_units
         return RBM.sigmoid(np.dot(self.W, v) + self.b)
+
+    def __compute_output_units_matrix(self, matrix_visible_units):
+        return np.transpose(RBM.sigmoid(np.dot(self.W, np.transpose(matrix_visible_units)) + self.b[:, np.newaxis]))
