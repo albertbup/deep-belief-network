@@ -41,7 +41,8 @@ class DBN():
         for sample in transformed_data:
             predicted_data[i, :] = self.__compute_output_units(sample)
             i += 1
-        return predicted_data
+        labels = np.argmax(predicted_data, axis=1)
+        return labels
 
     def __compute_activations(self, sample):
         input_data = sample
