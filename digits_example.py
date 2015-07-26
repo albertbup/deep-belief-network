@@ -19,9 +19,8 @@ def plot_scatter_color(X, y):
 mnist = fetch_mldata('MNIST original')
 XX = mnist.data
 # print y
-# digits = load_digits()
-# X = digits.data[:1000]
-# y = digits.target[:1000]
+#digits = load_digits()
+#XX = digits.data
 
 XX /= 255.0
 X = XX[60000:]
@@ -55,13 +54,14 @@ y = mnist.target[60000:]
 # X_PCA = pca.fit_transform(X)
 
 # Train DBN
-dbn = DBN([50, 50, 200], learning_rate=0.7, num_epochs=10)
+dbn = DBN([100, 100, 500], learning_rate=0.3, max_iter_backprop=10, max_epochs_rbm=1, lambda_param=0.0)
 dbn.fit(X, labels=y)
 
-X_t = mnist.data[60000:]
-y_t = mnist.target[60000:]
+X_t = XX[:60000]
+y_t = mnist.target[:60000]
 
 X_DBN = dbn.transform(X_t)
+Y_DBN = dbn.predict(X_t)
 
 # Do LDA
 lda = LDA(n_components=2)
