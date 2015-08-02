@@ -6,7 +6,8 @@ from RBM import RBM
 
 class DBN(BaseEstimator, TransformerMixin, ClassifierMixin):
     def __init__(self, hidden_layers_structure=[50, 50, 200], optimization_algorithm='sgd', learning_rate=0.1,
-                 max_iter_backprop=100, lambda_param=0.0, max_epochs_rbm=10, contrastive_divergence_iter=1):
+                 max_iter_backprop=100, lambda_param=0.0, max_epochs_rbm=10, contrastive_divergence_iter=1,
+                 cost_func='cross_entropy'):
         self.hidden_layers_structure = hidden_layers_structure
         self.optimization_algorithm = optimization_algorithm
         self.learning_rate = learning_rate
@@ -14,6 +15,7 @@ class DBN(BaseEstimator, TransformerMixin, ClassifierMixin):
         self.lambda_param = lambda_param
         self.max_epochs_rbm = max_epochs_rbm
         self.contrastive_divergence_iter = contrastive_divergence_iter
+        self.cost_func = cost_func
 
     def fit(self, data, labels=None):
         # Initialize rbm layers
@@ -69,13 +71,19 @@ class DBN(BaseEstimator, TransformerMixin, ClassifierMixin):
         labels = np.copy(_labels)
         matrix_error = np.zeros([len(_data), self.num_classes])
         num_samples = len(_data)
+
+        if self.cost_func is 'cross_entropy':
+            compute_delta_method = self.__compute_delta_cross_entropy_cost
+        else:
+            compute_delta_method = self.__compute_delta_quadratic_cost
+
         for iteration in range(1, self.max_iter_backprop + 1):
             idx = np.random.permutation(len(data))
             data = data[idx]
             labels = labels[idx]
             i = 0
             for sample, label in zip(data, labels):
-                delta_W, delta_bias, error_vector = self.__backpropagation(sample, label)
+                delta_W, delta_bias, error_vector = self.__backpropagation(sample, label, compute_delta_method)
                 # Updating parameters of hidden layers
                 layer = 0
                 for rbm in self.RBM_layers:
@@ -92,7 +100,7 @@ class DBN(BaseEstimator, TransformerMixin, ClassifierMixin):
             error = np.sum(np.linalg.norm(matrix_error, axis=1))
             print ">> Epoch %d finished \tPrediction error %f" % (iteration, error)
 
-    def __backpropagation(self, input_vector, label):
+    def __backpropagation(self, input_vector, label, compute_delta):
         x, y = input_vector, label
         deltas = list()
         list_layer_weights = list()
@@ -105,7 +113,7 @@ class DBN(BaseEstimator, TransformerMixin, ClassifierMixin):
 
         # Backward pass: computing deltas
         activation_output_layer = layers_activation[-1]
-        delta_output_layer = -(y - activation_output_layer) * (activation_output_layer * (1 - activation_output_layer))
+        delta_output_layer = compute_delta(y, activation_output_layer)
         deltas.append(delta_output_layer)
         layer_idx = range(len(self.RBM_layers))
         layer_idx.reverse()
@@ -134,8 +142,8 @@ class DBN(BaseEstimator, TransformerMixin, ClassifierMixin):
 
     def __fine_tuning(self, data, _labels):
         self.num_classes = len(np.unique(_labels))
-        self.W = np.random.randn(self.num_classes, self.RBM_layers[-1].num_hidden_units)
-        self.b = np.random.randn(self.num_classes)
+        self.W = 0.01 * np.random.randn(self.num_classes, self.RBM_layers[-1].num_hidden_units)
+        self.b = 0.01 * np.random.randn(self.num_classes)
 
         labels = self.__transform_labels_to_network_format(_labels)
 
@@ -156,3 +164,9 @@ class DBN(BaseEstimator, TransformerMixin, ClassifierMixin):
 
     def __compute_output_units_matrix(self, matrix_visible_units):
         return np.transpose(RBM.sigmoid(np.dot(self.W, np.transpose(matrix_visible_units)) + self.b[:, np.newaxis]))
+
+    def __compute_delta_cross_entropy_cost(self, label, predicted):
+        return -(label - predicted)
+
+    def __compute_delta_quadratic_cost(self, label, predicted):
+        return -(label - predicted) * (predicted * (1 - predicted))

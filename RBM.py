@@ -22,9 +22,9 @@ class RBM():
     def fit(self, data):
         # Initialize RBM parameters
         self.num_visible_units = data.shape[1]
-        self.W = np.random.randn(self.num_hidden_units, self.num_visible_units)
-        self.c = np.random.randn(self.num_hidden_units)
-        self.b = np.random.randn(self.num_visible_units)
+        self.W = 0.01 * np.random.randn(self.num_hidden_units, self.num_visible_units)
+        self.c = 0.01 * np.random.randn(self.num_hidden_units)
+        self.b = 0.01 * np.random.randn(self.num_visible_units)
 
         if self.optimization_algorithm is 'sgd':
             self.__stochastic_gradient_descent(data)
