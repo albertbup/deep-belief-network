@@ -1,9 +1,12 @@
 # DeepBeliefNet
-A simple, clean Python implementation of Deep Belief Networks with binary units based on 
+A simple, clean Python implementation of Deep Belief Networks with sigmoid units based on binary Restricted Boltzmann Machines (RBM):
+> Hinton, Geoffrey E., Simon Osindero, and Yee-Whye Teh. "A fast learning algorithm for deep belief nets." Neural computation 18.7 (2006): 1527-1554.
 > Fischer, Asja, and Christian Igel. "Training restricted Boltzmann machines: an introduction." Pattern Recognition 47.1 (2014): 25-39.
 
 ## Usage
-This implementation follows the scikit-learn way to work:
+This implementation follows scikit-learn guidelines and in turn, can be used alongside it:
+    
+    from DBN import DBN
   
     # Create a DBN with three layers containing 50, 50 and 200 hidden units respectively
     dbn = DBN(hidden_layers_structure=[50, 50, 200], learning_rate=0.1, max_iter_backprop=30,
