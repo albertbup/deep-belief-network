@@ -1,6 +1,7 @@
 # DeepBeliefNet
 A simple, clean Python implementation of Deep Belief Networks with sigmoid units based on binary Restricted Boltzmann Machines (RBM):
 > Hinton, Geoffrey E., Simon Osindero, and Yee-Whye Teh. "A fast learning algorithm for deep belief nets." Neural computation 18.7 (2006): 1527-1554.
+
 > Fischer, Asja, and Christian Igel. "Training restricted Boltzmann machines: an introduction." Pattern Recognition 47.1 (2014): 25-39.
 
 ## Usage
