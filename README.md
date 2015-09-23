@@ -10,8 +10,8 @@ This implementation follows scikit-learn guidelines and in turn, can be used alo
     from pyDBN.models import DBN
   
     # Create a DBN with three layers containing 50, 50 and 200 hidden units respectively
-    dbn = DBN(hidden_layers_structure=[50, 50, 200], learning_rate=0.1, max_iter_backprop=30,
-              max_epochs_rbm=10, lambda_param=0.1)
+    dbn = DBN(hidden_layers_structure=(50, 50, 200), learning_rate=0.01, max_iter_backprop=200,
+              max_epochs_rbm=20, lambda_param=1)
     
     # Learn from data in X in a unsupervised way
     dbn.fit(X)
