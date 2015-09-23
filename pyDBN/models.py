@@ -194,8 +194,9 @@ class DBN(BaseEstimator, TransformerMixin, ClassifierMixin):
                 self.W = (1 - (self.learning_rate * self.lambda_param) / num_samples) * self.W - self.learning_rate * \
                                                                                                  delta_W[layer]
                 self.b -= self.learning_rate * delta_bias[layer]
-                matrix_error[i, :] = error_vector
-                i += 1
+                if self.verbose:
+                    matrix_error[i, :] = error_vector
+                    i += 1
             if self.verbose:
                 error = np.sum(np.linalg.norm(matrix_error, axis=1))
                 print ">> Epoch %d finished \tPrediction error %f" % (iteration, error)
