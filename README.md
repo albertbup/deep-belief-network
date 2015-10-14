@@ -1,4 +1,4 @@
-# DeepBeliefNetwork
+# deep-belief-network
 A simple, clean Python implementation of Deep Belief Networks with sigmoid units based on binary Restricted Boltzmann Machines (RBM):
 > Hinton, Geoffrey E., Simon Osindero, and Yee-Whye Teh. "A fast learning algorithm for deep belief nets." Neural computation 18.7 (2006): 1527-1554.
 
@@ -33,4 +33,4 @@ NumPy and scikit-learn packages must be installed in the system. If aren't, simp
   
 ## Installation
 
-    pip install git+git://github.com/albertbup/DeepBeliefNetwork.git@master
+    pip install git+git://github.com/albertbup/deep-belief-network.git@master
