@@ -2,8 +2,8 @@
 
 from distutils.core import setup
 
-setup(name='pyDBN',
+setup(name='deep-belief-network',
       version='0.1',
       description='Python implementation of Deep Belief Networks',
-      packages=['pyDBN'],
+      packages=['dbn'],
       )

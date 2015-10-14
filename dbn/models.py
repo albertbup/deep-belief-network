@@ -1,9 +1,11 @@
-from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin
+from abc import ABCMeta, abstractmethod
+
+from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin, RegressorMixin
 import numpy as np
 
 
-class RBM():
-    def __init__(self, num_hidden_units=200, optimization_algorithm='sgd', learning_rate=0.1, max_epochs=10,
+class BinaryRBM(BaseEstimator, TransformerMixin):
+    def __init__(self, num_hidden_units=100, optimization_algorithm='sgd', learning_rate=1e-3, max_epochs=10,
                  contrastive_divergence_iter=1, verbose=True):
         self.num_hidden_units = num_hidden_units
         self.optimization_algorithm = optimization_algorithm
@@ -14,14 +16,29 @@ class RBM():
 
     @classmethod
     def sigmoid(cls, vector):
+        """
+        Vectorized version of __sigmoid function.
+        :param vector: array-like, shape = (n_features, 1)
+        :return:
+        """
         func = np.vectorize(cls.__sigmoid)
         return func(vector)
 
     @classmethod
     def __sigmoid(cls, x):
+        """
+        Sigmoid function.
+        :param x: float
+        :return:
+        """
         return 1 / (1.0 + np.exp(-x))
 
     def fit(self, data):
+        """
+        Fit a model given data.
+        :param data: array-like, shape = (n_samples, n_features)
+        :return:
+        """
         # Initialize RBM parameters
         self.num_visible_units = data.shape[1]
         self.W = 0.01 * np.random.randn(self.num_hidden_units, self.num_visible_units)
@@ -30,9 +47,16 @@ class RBM():
 
         if self.optimization_algorithm is 'sgd':
             self.__stochastic_gradient_descent(data)
+        else:
+            raise ValueError("Invalid optimization algorithm.")
         return self
 
     def transform(self, data):
+        """
+        Transforms data using the fitted model.
+        :param data: array-like, shape = (n_samples, n_features)
+        :return:
+        """
         if len(data.shape) is 1:  # It is a single sample
             sample = data
             return self.__compute_hidden_units(sample)
@@ -40,9 +64,19 @@ class RBM():
         return transformed_data
 
     def __reconstruct(self, transformed_data):
+        """
+        Reconstruct visible units given the hidden layer output.
+        :param transformed_data: array-like, shape = (n_samples, n_features)
+        :return:
+        """
         return self.__compute_visible_units_matrix(transformed_data)
 
     def __stochastic_gradient_descent(self, _data):
+        """
+        Performs stochastic gradient descend optimization algorithm.
+        :param _data: array-like, shape = (n_samples, n_features)
+        :return:
+        """
         for iteration in range(1, self.max_epochs + 1):
             idx = np.random.permutation(len(_data))
             data = _data[idx]
@@ -56,6 +90,11 @@ class RBM():
                 print ">> Epoch %d finished \tReconstruction error %f" % (iteration, error)
 
     def __contrastive_divergence(self, vector_visible_units):
+        """
+        Computes gradients using Contrastive Divergence method.
+        :param vector_visible_units: array-like, shape = (n_features, 1)
+        :return:
+        """
         v_0 = vector_visible_units
         v_t = np.copy(v_0)
 
@@ -75,53 +114,80 @@ class RBM():
         return delta_W, delta_b, delta_c
 
     def __compute_hidden_units(self, vector_visible_units):
+        """
+        Computes hidden unit outputs.
+        :param vector_visible_units: array-like, shape = (n_features, 1)
+        :return:
+        """
         v = vector_visible_units
         return self.__sigmoid(np.dot(self.W, v) + self.c)
 
     def __compute_hidden_units_matrix(self, matrix_visible_units):
-        return np.transpose(RBM.sigmoid(np.dot(self.W, np.transpose(matrix_visible_units)) + self.c[:, np.newaxis]))
+        """
+        Computes hidden unit outputs.
+        :param matrix_visible_units: array-like, shape = (n_samples, n_features)
+        :return:
+        """
+        return np.transpose(
+            BinaryRBM.sigmoid(np.dot(self.W, np.transpose(matrix_visible_units)) + self.c[:, np.newaxis]))
 
     def __compute_visible_units(self, vector_hidden_units):
+        """
+        Computes visible (or input) unit outputs.
+        :param vector_hidden_units: array-like, shape = (n_features, 1)
+        :return:
+        """
         h = vector_hidden_units
         return self.__sigmoid(np.dot(h, self.W) + self.b)
 
     def __compute_visible_units_matrix(self, matrix_hidden_units):
-        return RBM.sigmoid(np.dot(matrix_hidden_units, self.W) + self.b[np.newaxis, :])
+        """
+        Computes visible (or input) unit outputs.
+        :param matrix_hidden_units: array-like, shape = (n_samples, n_features)
+        :return:
+        """
+        return BinaryRBM.sigmoid(np.dot(matrix_hidden_units, self.W) + self.b[np.newaxis, :])
 
     def __compute_free_energy(self, vector_visible_units):
+        """
+        Computes the RBM free energy.
+        :param vector_visible_units: array-like, shape = (n_features, 1)
+        :return:
+        """
         v = vector_visible_units
         h = self.__compute_hidden_units(v)
         energy = - np.dot(self.b, v) - np.sum(np.log(1 + np.exp(h)))
         return energy
 
     def __compute_reconstruction_error(self, data):
+        """
+        Computes the reconstruction error of the data.
+        :param data: array-like, shape = (n_samples, n_features)
+        :return:
+        """
         data_transformed = self.transform(data)
         data_reconstructed = self.__reconstruct(data_transformed)
         return np.sum(np.linalg.norm(data_reconstructed - data, axis=1))
 
 
-class DBN(BaseEstimator, TransformerMixin, ClassifierMixin):
-    def __init__(self, hidden_layers_structure=(50, 50, 200), optimization_algorithm='sgd', learning_rate=0.1,
-                 max_iter_backprop=100, lambda_param=0.0, max_epochs_rbm=10, contrastive_divergence_iter=1,
-                 cost_func='cross_entropy', verbose=True):
+class BaseDBN(BaseEstimator, TransformerMixin):
+    def __init__(self, hidden_layers_structure=(100, 100), optimization_algorithm='sgd', learning_rate=1e-3,
+                 max_epochs_rbm=10, contrastive_divergence_iter=1, verbose=True):
         self.hidden_layers_structure = hidden_layers_structure
         self.optimization_algorithm = optimization_algorithm
         self.learning_rate = learning_rate
-        self.max_iter_backprop = max_iter_backprop
-        self.lambda_param = lambda_param
         self.max_epochs_rbm = max_epochs_rbm
         self.contrastive_divergence_iter = contrastive_divergence_iter
-        self.cost_func = cost_func
         self.RBM_layers = None
         self.verbose = verbose
 
-    def fit(self, data, labels=None):
+    def fit(self, data):
         # Initialize rbm layers
         self.RBM_layers = list()
         for num_hidden_units in self.hidden_layers_structure:
-            rbm = RBM(num_hidden_units=num_hidden_units, optimization_algorithm=self.optimization_algorithm,
-                      learning_rate=self.learning_rate, max_epochs=self.max_epochs_rbm,
-                      contrastive_divergence_iter=self.contrastive_divergence_iter, verbose=self.verbose)
+            rbm = BinaryRBM(num_hidden_units=num_hidden_units, optimization_algorithm=self.optimization_algorithm,
+                            learning_rate=self.learning_rate, max_epochs=self.max_epochs_rbm,
+                            contrastive_divergence_iter=self.contrastive_divergence_iter, verbose=self.verbose)
             self.RBM_layers.append(rbm)
 
         # Fit RBM
@@ -130,16 +196,31 @@ class DBN(BaseEstimator, TransformerMixin, ClassifierMixin):
             rbm.fit(input_data)
             input_data = rbm.transform(input_data)
 
-        # Fine-tuning with labels
-        if labels is not None:
-            self.__fine_tuning(data, labels)
-        return self
-
     def transform(self, data):
         input_data = data
         for rbm in self.RBM_layers:
             input_data = rbm.transform(input_data)
         return input_data
+
+
+class DBNPredictor(BaseDBN):
+    __metaclass__ = ABCMeta
+
+    def __init__(self, hidden_layers_structure=(100, 100), optimization_algorithm='sgd', learning_rate=1e-3,
+                 max_iter_backprop=100, lambda_param=1.0, max_epochs_rbm=10, contrastive_divergence_iter=1,
+                 verbose=True):
+        super(DBNPredictor, self).__init__(hidden_layers_structure=hidden_layers_structure,
+                                           optimization_algorithm=optimization_algorithm, learning_rate=learning_rate,
+                                           max_epochs_rbm=max_epochs_rbm,
+                                           contrastive_divergence_iter=contrastive_divergence_iter, verbose=verbose)
+        self.max_iter_backprop = max_iter_backprop
+        self.lambda_param = lambda_param
+        self.verbose = verbose
+
+    def fit(self, data, labels):
+        super(DBNPredictor, self).fit(data)
+        self.__fine_tuning(data, labels)
+        return self
 
     def predict(self, data):
         transformed_data = self.transform(data)
@@ -169,20 +250,13 @@ class DBN(BaseEstimator, TransformerMixin, ClassifierMixin):
             matrix_error = np.zeros([len(_data), self.num_classes])
         num_samples = len(_data)
 
-        if self.cost_func is 'cross_entropy':
-            compute_delta_method = self.__compute_delta_cross_entropy_cost
-        elif self.cost_func is 'quadratic':
-            compute_delta_method = self.__compute_delta_quadratic_cost
-        else:
-            raise ValueError("Invalid cost function.")
-
         for iteration in range(1, self.max_iter_backprop + 1):
             idx = np.random.permutation(len(_data))
             data = _data[idx]
             labels = _labels[idx]
             i = 0
             for sample, label in zip(data, labels):
-                delta_W, delta_bias, error_vector = self.__backpropagation(sample, label, compute_delta_method)
+                delta_W, delta_bias, error_vector = self.__backpropagation(sample, label)
                 # Updating parameters of hidden layers
                 layer = 0
                 for rbm in self.RBM_layers:
@@ -201,7 +275,7 @@ class DBN(BaseEstimator, TransformerMixin, ClassifierMixin):
                 error = np.sum(np.linalg.norm(matrix_error, axis=1))
                 print ">> Epoch %d finished \tPrediction error %f" % (iteration, error)
 
-    def __backpropagation(self, input_vector, label, compute_delta):
+    def __backpropagation(self, input_vector, label):
         x, y = input_vector, label
         deltas = list()
         list_layer_weights = list()
@@ -214,7 +288,7 @@ class DBN(BaseEstimator, TransformerMixin, ClassifierMixin):
 
         # Backward pass: computing deltas
         activation_output_layer = layers_activation[-1]
-        delta_output_layer = compute_delta(y, activation_output_layer)
+        delta_output_layer = self.__compute_output_layer_delta(y, activation_output_layer)
         deltas.append(delta_output_layer)
         layer_idx = range(len(self.RBM_layers))
         layer_idx.reverse()
@@ -250,6 +324,36 @@ class DBN(BaseEstimator, TransformerMixin, ClassifierMixin):
 
         if self.optimization_algorithm is 'sgd':
             self.__stochastic_gradient_descent(data, labels)
+        else:
+            raise ValueError("Invalid optimization algorithm.")
+
+    @abstractmethod
+    def __transform_labels_to_network_format(self, labels):
+        return
+
+    @abstractmethod
+    def __compute_output_units(self, vector_visible_units):
+        return
+
+    @abstractmethod
+    def __compute_output_units_matrix(self, matrix_visible_units):
+        return
+
+    @abstractmethod
+    def __compute_output_layer_delta(self, label, predicted):
+        return
+
+
+class DBNClassification(DBNPredictor, ClassifierMixin):
+    def __init__(self, hidden_layers_structure=(100, 100), optimization_algorithm='sgd', learning_rate=1e-3,
+                 max_iter_backprop=100, lambda_param=1.0, max_epochs_rbm=10, contrastive_divergence_iter=1,
+                 verbose=True):
+        super(DBNClassification, self).__init__(hidden_layers_structure=hidden_layers_structure,
+                                                optimization_algorithm=optimization_algorithm,
+                                                learning_rate=learning_rate, max_epochs_rbm=max_epochs_rbm,
+                                                contrastive_divergence_iter=contrastive_divergence_iter,
+                                                verbose=verbose, max_iter_backprop=max_iter_backprop,
+                                                lambda_param=lambda_param)
 
     def __transform_labels_to_network_format(self, labels):
         new_labels = np.zeros([len(labels), self.num_classes])
@@ -261,13 +365,35 @@ class DBN(BaseEstimator, TransformerMixin, ClassifierMixin):
 
     def __compute_output_units(self, vector_visible_units):
         v = vector_visible_units
-        return RBM.sigmoid(np.dot(self.W, v) + self.b)
+        return BinaryRBM.sigmoid(np.dot(self.W, v) + self.b)
 
     def __compute_output_units_matrix(self, matrix_visible_units):
-        return np.transpose(RBM.sigmoid(np.dot(self.W, np.transpose(matrix_visible_units)) + self.b[:, np.newaxis]))
+        return np.transpose(
+            BinaryRBM.sigmoid(np.dot(self.W, np.transpose(matrix_visible_units)) + self.b[:, np.newaxis]))
 
-    def __compute_delta_cross_entropy_cost(self, label, predicted):
+    def __compute_output_layer_delta(self, label, predicted):
         return -(label - predicted)
 
-    def __compute_delta_quadratic_cost(self, label, predicted):
-        return -(label - predicted) * (predicted * (1 - predicted))
+
+class DBNRegression(DBNPredictor, RegressorMixin):
+    def __init__(self, hidden_layers_structure=(100, 100), optimization_algorithm='sgd', learning_rate=1e-3,
+                 max_iter_backprop=100, lambda_param=1.0, max_epochs_rbm=10, contrastive_divergence_iter=1,
+                 verbose=True):
+        super(DBNRegression, self).__init__(hidden_layers_structure=hidden_layers_structure,
+                                            optimization_algorithm=optimization_algorithm, learning_rate=learning_rate,
+                                            max_epochs_rbm=max_epochs_rbm,
+                                            contrastive_divergence_iter=contrastive_divergence_iter, verbose=verbose,
+                                            max_iter_backprop=max_iter_backprop, lambda_param=lambda_param)
+
+    def __transform_labels_to_network_format(self, labels):
+        return labels
+
+    def __compute_output_units(self, vector_visible_units):
+        v = vector_visible_units
+        return np.dot(self.W, v) + self.b
+
+    def __compute_output_units_matrix(self, matrix_visible_units):
+        return np.transpose(np.dot(self.W, np.transpose(matrix_visible_units)) + self.b[:, np.newaxis])
+
+    def __compute_output_layer_delta(self, label, predicted):
+        return -(label - predicted)
