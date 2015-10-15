@@ -37,6 +37,15 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         """
         return 1 / (1.0 + np.exp(-x))
 
+    @classmethod
+    def sigmoid_prime(cls, activations):
+        """
+        Given neuron activations, compute its first derivative.
+        :param activations: array-like, shape = (n_features, )
+        :return:
+        """
+        return activations * (1 - activations)
+
     def fit(self, data):
         """
         Fit a model given data.
@@ -349,7 +358,7 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
         for layer in layer_idx:
             neuron_activations = layers_activation[layer]
             W = list_layer_weights[layer + 1]
-            delta = np.dot(delta_previous_layer, W) * (neuron_activations * (1 - neuron_activations))
+            delta = np.dot(delta_previous_layer, W) * BinaryRBM.sigmoid_prime(neuron_activations)
             deltas.append(delta)
             delta_previous_layer = delta
         deltas.reverse()
