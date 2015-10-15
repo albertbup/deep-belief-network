@@ -5,25 +5,36 @@ A simple, clean Python implementation of Deep Belief Networks with sigmoid units
 > Fischer, Asja, and Christian Igel. "Training restricted Boltzmann machines: an introduction." Pattern Recognition 47.1 (2014): 25-39.
 
 ## Usage
-This implementation follows scikit-learn guidelines and in turn, can be used alongside it:
+This implementation follows [scikit-learn](http://scikit-learn.org) guidelines and in turn, can be used alongside it. Next you have a demo code for solving digits classification problem which can be found in **classification_demo.py** (check **regression_demo.py** for a regression problem example).
     
-    from pyDBN.models import DBN
-  
-    # Create a DBN with three layers containing 50, 50 and 200 hidden units respectively
-    dbn = DBN(hidden_layers_structure=(50, 50, 200), learning_rate=0.01, max_iter_backprop=200,
-              max_epochs_rbm=20, lambda_param=1)
+    from sklearn.datasets import load_digits
+    from sklearn.cross_validation import train_test_split
+    from sklearn.metrics.classification import accuracy_score
+    import numpy as np
     
-    # Learn from data in X in a unsupervised way
-    dbn.fit(X)
+    from dbn.models import SupervisedDBNClassification
     
-    # Or learn in a supervised way performing fine-tuning using labels
-    dbn.fit(X, y)
     
-    # Transform data in X
-    X_transformed = dbn.transform(X)
+    # Loading dataset
+    digits = load_digits()
+    X, Y = digits.data, digits.target
+    X = X.astype(np.float32)
     
-    # Predict data in X (if learnt in a supervised way)
-    X_predicted = dbn.predict(X)
+    # 0-1 scaling
+    X = (X - np.min(X)) / (np.max(X) - np.min(X))
+    
+    # Splitting data
+    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=0)
+    
+    # Training
+    classifier = SupervisedDBNClassification(hidden_layers_structure=[256, 256], learning_rate_rbm=0.01,
+                                             learning_rate=0.001, max_epochs_rbm=30, max_iter_backprop=1000,
+                                             lambda_param=0.0)
+    classifier.fit(X_train, Y_train)
+    
+    # Test
+    Y_pred = classifier.predict(X_test)
+    print 'Done.\nAccuracy: %f' % accuracy_score(Y_test, Y_pred)
     
 ## Requierements
 NumPy and scikit-learn packages must be installed in the system. If aren't, simply do:
