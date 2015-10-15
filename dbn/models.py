@@ -8,6 +8,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
     """
     This class implements a Binary Restricted Boltzmann machine.
     """
+
     def __init__(self, num_hidden_units=100, optimization_algorithm='sgd', learning_rate=1e-3, max_epochs=10,
                  contrastive_divergence_iter=1, verbose=True):
         self.num_hidden_units = num_hidden_units
@@ -44,9 +45,9 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         """
         # Initialize RBM parameters
         self.num_visible_units = data.shape[1]
-        self.W = 0.01 * np.random.randn(self.num_hidden_units, self.num_visible_units)
-        self.c = 0.01 * np.random.randn(self.num_hidden_units)
-        self.b = 0.01 * np.random.randn(self.num_visible_units)
+        self.W = np.random.randn(self.num_hidden_units, self.num_visible_units) / np.sqrt(self.num_visible_units)
+        self.c = np.random.randn(self.num_hidden_units) / np.sqrt(self.num_visible_units)
+        self.b = np.random.randn(self.num_visible_units) / np.sqrt(self.num_visible_units)
 
         if self.optimization_algorithm is 'sgd':
             self.__stochastic_gradient_descent(data)
@@ -177,11 +178,12 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
     """
     This class implements a unsupervised Deep Belief Network.
     """
+
     def __init__(self, hidden_layers_structure=(100, 100), optimization_algorithm='sgd', learning_rate=1e-3,
                  max_epochs_rbm=10, contrastive_divergence_iter=1, verbose=True):
         self.hidden_layers_structure = hidden_layers_structure
         self.optimization_algorithm = optimization_algorithm
-        self.learning_rate = learning_rate
+        self.learning_rate_rbm = learning_rate
         self.max_epochs_rbm = max_epochs_rbm
         self.contrastive_divergence_iter = contrastive_divergence_iter
         self.RBM_layers = None
@@ -197,7 +199,7 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
         self.RBM_layers = list()
         for num_hidden_units in self.hidden_layers_structure:
             rbm = BinaryRBM(num_hidden_units=num_hidden_units, optimization_algorithm=self.optimization_algorithm,
-                            learning_rate=self.learning_rate, max_epochs=self.max_epochs_rbm,
+                            learning_rate=self.learning_rate_rbm, max_epochs=self.max_epochs_rbm,
                             contrastive_divergence_iter=self.contrastive_divergence_iter, verbose=self.verbose)
             self.RBM_layers.append(rbm)
 
@@ -227,15 +229,16 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
     __metaclass__ = ABCMeta
 
     def __init__(self, hidden_layers_structure=(100, 100), optimization_algorithm='sgd', learning_rate=1e-3,
-                 max_iter_backprop=100, lambda_param=1.0, max_epochs_rbm=10, contrastive_divergence_iter=1,
-                 verbose=True):
+                 learning_rate_rbm=1e-3, max_iter_backprop=100, lambda_param=1.0, max_epochs_rbm=10,
+                 contrastive_divergence_iter=1, verbose=True):
         super(AbstractSupervisedDBN, self).__init__(hidden_layers_structure=hidden_layers_structure,
                                                     optimization_algorithm=optimization_algorithm,
-                                                    learning_rate=learning_rate, max_epochs_rbm=max_epochs_rbm,
+                                                    learning_rate=learning_rate_rbm, max_epochs_rbm=max_epochs_rbm,
                                                     contrastive_divergence_iter=contrastive_divergence_iter,
                                                     verbose=verbose)
         self.max_iter_backprop = max_iter_backprop
         self.lambda_param = lambda_param
+        self.learning_rate = learning_rate
         self.verbose = verbose
 
     def fit(self, data, labels):
@@ -258,10 +261,9 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
         transformed_data = self.transform(data)
         if len(data.shape) is 1:  # It is a single sample
             sample = transformed_data
-            return self.__compute_output_units(sample)
-        predicted_data = self.__compute_output_units_matrix(transformed_data)
-        labels = np.argmax(predicted_data, axis=1)
-        return labels
+            return self.compute_output_units(sample)
+        predicted_data = self.compute_output_units_matrix(transformed_data)
+        return predicted_data
 
     def __compute_activations(self, sample):
         """
@@ -277,7 +279,7 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
             layers_activation.append(input_data)
 
         # Computing activation of output layer
-        input_data = self.__compute_output_units(input_data)
+        input_data = self.compute_output_units(input_data)
         layers_activation.append(input_data)
 
         return layers_activation
@@ -303,13 +305,15 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
                 # Updating parameters of hidden layers
                 layer = 0
                 for rbm in self.RBM_layers:
-                    rbm.W = (1 - (self.learning_rate * self.lambda_param) / num_samples) * rbm.W - self.learning_rate * \
-                                                                                                   delta_W[layer]
+                    rbm.W = (1 - (
+                        self.learning_rate * self.lambda_param) / num_samples) * rbm.W - self.learning_rate * \
+                                                                                         delta_W[layer]
                     rbm.c -= self.learning_rate * delta_bias[layer]
                     layer += 1
                 # Updating parameters of output layer
-                self.W = (1 - (self.learning_rate * self.lambda_param) / num_samples) * self.W - self.learning_rate * \
-                                                                                                 delta_W[layer]
+                self.W = (1 - (
+                    self.learning_rate * self.lambda_param) / num_samples) * self.W - self.learning_rate * \
+                                                                                      delta_W[layer]
                 self.b -= self.learning_rate * delta_bias[layer]
                 if self.verbose:
                     matrix_error[i, :] = error_vector
@@ -337,7 +341,7 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
 
         # Backward pass: computing deltas
         activation_output_layer = layers_activation[-1]
-        delta_output_layer = self.__compute_output_layer_delta(y, activation_output_layer)
+        delta_output_layer = self.compute_output_layer_delta(y, activation_output_layer)
         deltas.append(delta_output_layer)
         layer_idx = range(len(self.RBM_layers))
         layer_idx.reverse()
@@ -371,49 +375,57 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
         :param _labels: array-like, shape = (n_samples, targets)
         :return:
         """
-        self.num_classes = len(np.unique(_labels))
-        self.W = 0.01 * np.random.randn(self.num_classes, self.RBM_layers[-1].num_hidden_units)
-        self.b = 0.01 * np.random.randn(self.num_classes)
+        self.num_classes = self.determine_num_output_neurons(_labels)
+        num_hidden_units_previous_layer = self.RBM_layers[-1].num_hidden_units
+        self.W = np.random.randn(self.num_classes, num_hidden_units_previous_layer) / np.sqrt(
+            num_hidden_units_previous_layer)
+        self.b = np.random.randn(self.num_classes) / np.sqrt(num_hidden_units_previous_layer)
 
-        labels = self.__transform_labels_to_network_format(_labels)
-
+        labels = self.transform_labels_to_network_format(_labels)
         if self.optimization_algorithm is 'sgd':
             self.__stochastic_gradient_descent(data, labels)
         else:
             raise ValueError("Invalid optimization algorithm.")
 
     @abstractmethod
-    def __transform_labels_to_network_format(self, labels):
+    def transform_labels_to_network_format(self, labels):
         return
 
     @abstractmethod
-    def __compute_output_units(self, vector_visible_units):
+    def compute_output_units(self, vector_visible_units):
         return
 
     @abstractmethod
-    def __compute_output_units_matrix(self, matrix_visible_units):
+    def compute_output_units_matrix(self, matrix_visible_units):
         return
 
     @abstractmethod
-    def __compute_output_layer_delta(self, label, predicted):
+    def compute_output_layer_delta(self, label, predicted):
+        return
+
+    @abstractmethod
+    def determine_num_output_neurons(self, labels):
         return
 
 
-class DBNClassification(AbstractSupervisedDBN, ClassifierMixin):
+class SupervisedDBNClassification(AbstractSupervisedDBN, ClassifierMixin):
     """
     This class implements a Deep Belief Network for classification problems.
     """
-    def __init__(self, hidden_layers_structure=(100, 100), optimization_algorithm='sgd', learning_rate=1e-3,
-                 max_iter_backprop=100, lambda_param=1.0, max_epochs_rbm=10, contrastive_divergence_iter=1,
-                 verbose=True):
-        super(DBNClassification, self).__init__(hidden_layers_structure=hidden_layers_structure,
-                                                optimization_algorithm=optimization_algorithm,
-                                                learning_rate=learning_rate, max_epochs_rbm=max_epochs_rbm,
-                                                contrastive_divergence_iter=contrastive_divergence_iter,
-                                                verbose=verbose, max_iter_backprop=max_iter_backprop,
-                                                lambda_param=lambda_param)
 
-    def __transform_labels_to_network_format(self, labels):
+    def __init__(self, hidden_layers_structure=[100, 100], optimization_algorithm='sgd', learning_rate=1e-3,
+                 learning_rate_rbm=1e-3, max_iter_backprop=100, lambda_param=1.0, max_epochs_rbm=10,
+                 contrastive_divergence_iter=1, verbose=True):
+        super(SupervisedDBNClassification, self).__init__(hidden_layers_structure=hidden_layers_structure,
+                                                          optimization_algorithm=optimization_algorithm,
+                                                          learning_rate=learning_rate,
+                                                          learning_rate_rbm=learning_rate_rbm,
+                                                          max_epochs_rbm=max_epochs_rbm,
+                                                          contrastive_divergence_iter=contrastive_divergence_iter,
+                                                          verbose=verbose, max_iter_backprop=max_iter_backprop,
+                                                          lambda_param=lambda_param)
+
+    def transform_labels_to_network_format(self, labels):
         """
         Converts labels as single integer to row vectors. For instance, given a three class problem, labels would be
         mapped as 1: [1 0 0], 2: [0 1 0], 3: [0, 0, 1].
@@ -427,7 +439,7 @@ class DBNClassification(AbstractSupervisedDBN, ClassifierMixin):
             i += 1
         return new_labels
 
-    def __compute_output_units(self, vector_visible_units):
+    def compute_output_units(self, vector_visible_units):
         """
         Compute activations of output units.
         :param vector_visible_units: array-like, shape = (n_features, )
@@ -436,7 +448,7 @@ class DBNClassification(AbstractSupervisedDBN, ClassifierMixin):
         v = vector_visible_units
         return BinaryRBM.sigmoid(np.dot(self.W, v) + self.b)
 
-    def __compute_output_units_matrix(self, matrix_visible_units):
+    def compute_output_units_matrix(self, matrix_visible_units):
         """
         Compute activations of output units.
         :param matrix_visible_units: shape = (n_samples, n_features)
@@ -445,7 +457,7 @@ class DBNClassification(AbstractSupervisedDBN, ClassifierMixin):
         return np.transpose(
             BinaryRBM.sigmoid(np.dot(self.W, np.transpose(matrix_visible_units)) + self.b[:, np.newaxis]))
 
-    def __compute_output_layer_delta(self, label, predicted):
+    def compute_output_layer_delta(self, label, predicted):
         """
         Compute deltas of the output layer, using cross-entropy cost function.
         :param label: array-like, shape = (n_features, )
@@ -454,21 +466,37 @@ class DBNClassification(AbstractSupervisedDBN, ClassifierMixin):
         """
         return -(label - predicted)
 
+    def predict(self, data):
+        prediction = super(SupervisedDBNClassification, self).predict(data)
+        labels = np.argmax(prediction, axis=1)
+        return labels
 
-class DBNRegression(AbstractSupervisedDBN, RegressorMixin):
+    def determine_num_output_neurons(self, labels):
+        """
+        Given labels, compute the needed number of output units.
+        :param labels: shape = (n_samples, )
+        :return:
+        """
+        return len(np.unique(labels))
+
+
+class SupervisedDBNRegression(AbstractSupervisedDBN, RegressorMixin):
     """
     This class implements a Deep Belief Network for regression problems.
     """
-    def __init__(self, hidden_layers_structure=(100, 100), optimization_algorithm='sgd', learning_rate=1e-3,
-                 max_iter_backprop=100, lambda_param=1.0, max_epochs_rbm=10, contrastive_divergence_iter=1,
-                 verbose=True):
-        super(DBNRegression, self).__init__(hidden_layers_structure=hidden_layers_structure,
-                                            optimization_algorithm=optimization_algorithm, learning_rate=learning_rate,
-                                            max_epochs_rbm=max_epochs_rbm,
-                                            contrastive_divergence_iter=contrastive_divergence_iter, verbose=verbose,
-                                            max_iter_backprop=max_iter_backprop, lambda_param=lambda_param)
 
-    def __transform_labels_to_network_format(self, labels):
+    def __init__(self, hidden_layers_structure=[100, 100], optimization_algorithm='sgd', learning_rate=1e-3,
+                 learning_rate_rbm=1e-3, max_iter_backprop=100, lambda_param=1.0, max_epochs_rbm=10,
+                 contrastive_divergence_iter=1, verbose=True):
+        super(SupervisedDBNRegression, self).__init__(hidden_layers_structure=hidden_layers_structure,
+                                                      optimization_algorithm=optimization_algorithm,
+                                                      learning_rate=learning_rate, learning_rate_rbm=learning_rate_rbm,
+                                                      max_epochs_rbm=max_epochs_rbm,
+                                                      contrastive_divergence_iter=contrastive_divergence_iter,
+                                                      verbose=verbose, max_iter_backprop=max_iter_backprop,
+                                                      lambda_param=lambda_param)
+
+    def transform_labels_to_network_format(self, labels):
         """
         Returns the same labels since regression case does not need to convert anything.
         :param labels: array-like, shape = (n_samples, targets)
@@ -476,7 +504,7 @@ class DBNRegression(AbstractSupervisedDBN, RegressorMixin):
         """
         return labels
 
-    def __compute_output_units(self, vector_visible_units):
+    def compute_output_units(self, vector_visible_units):
         """
         Compute activations of output units.
         :param vector_visible_units: array-like, shape = (n_features, )
@@ -485,7 +513,7 @@ class DBNRegression(AbstractSupervisedDBN, RegressorMixin):
         v = vector_visible_units
         return np.dot(self.W, v) + self.b
 
-    def __compute_output_units_matrix(self, matrix_visible_units):
+    def compute_output_units_matrix(self, matrix_visible_units):
         """
         Compute activations of output units.
         :param matrix_visible_units: shape = (n_samples, n_features)
@@ -493,7 +521,7 @@ class DBNRegression(AbstractSupervisedDBN, RegressorMixin):
         """
         return np.transpose(np.dot(self.W, np.transpose(matrix_visible_units)) + self.b[:, np.newaxis])
 
-    def __compute_output_layer_delta(self, label, predicted):
+    def compute_output_layer_delta(self, label, predicted):
         """
         Compute deltas of the output layer for the regression case, using common (one-half) squared-error cost function.
         :param label: array-like, shape = (n_features, )
@@ -501,3 +529,14 @@ class DBNRegression(AbstractSupervisedDBN, RegressorMixin):
         :return:
         """
         return -(label - predicted)
+
+    def determine_num_output_neurons(self, labels):
+        """
+        Given labels, compute the needed number of output units.
+        :param labels: shape = (n_samples, n_targets)
+        :return:
+        """
+        if len(labels.shape) == 1:
+            return 1
+        else:
+            return labels.shape[1]
