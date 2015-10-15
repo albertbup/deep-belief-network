@@ -5,6 +5,9 @@ import numpy as np
 
 
 class BinaryRBM(BaseEstimator, TransformerMixin):
+    """
+    This class implements a Binary Restricted Boltzmann machine.
+    """
     def __init__(self, num_hidden_units=100, optimization_algorithm='sgd', learning_rate=1e-3, max_epochs=10,
                  contrastive_divergence_iter=1, verbose=True):
         self.num_hidden_units = num_hidden_units
@@ -18,7 +21,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
     def sigmoid(cls, vector):
         """
         Vectorized version of __sigmoid function.
-        :param vector: array-like, shape = (n_features, 1)
+        :param vector: array-like, shape = (n_features, )
         :return:
         """
         func = np.vectorize(cls.__sigmoid)
@@ -92,7 +95,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
     def __contrastive_divergence(self, vector_visible_units):
         """
         Computes gradients using Contrastive Divergence method.
-        :param vector_visible_units: array-like, shape = (n_features, 1)
+        :param vector_visible_units: array-like, shape = (n_features, )
         :return:
         """
         v_0 = vector_visible_units
@@ -116,7 +119,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
     def __compute_hidden_units(self, vector_visible_units):
         """
         Computes hidden unit outputs.
-        :param vector_visible_units: array-like, shape = (n_features, 1)
+        :param vector_visible_units: array-like, shape = (n_features, )
         :return:
         """
         v = vector_visible_units
@@ -134,7 +137,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
     def __compute_visible_units(self, vector_hidden_units):
         """
         Computes visible (or input) unit outputs.
-        :param vector_hidden_units: array-like, shape = (n_features, 1)
+        :param vector_hidden_units: array-like, shape = (n_features, )
         :return:
         """
         h = vector_hidden_units
@@ -151,7 +154,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
     def __compute_free_energy(self, vector_visible_units):
         """
         Computes the RBM free energy.
-        :param vector_visible_units: array-like, shape = (n_features, 1)
+        :param vector_visible_units: array-like, shape = (n_features, )
         :return:
         """
         v = vector_visible_units
@@ -170,7 +173,10 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         return np.sum(np.linalg.norm(data_reconstructed - data, axis=1))
 
 
-class BaseDBN(BaseEstimator, TransformerMixin):
+class UnsupervisedDBN(BaseEstimator, TransformerMixin):
+    """
+    This class implements a unsupervised Deep Belief Network.
+    """
     def __init__(self, hidden_layers_structure=(100, 100), optimization_algorithm='sgd', learning_rate=1e-3,
                  max_epochs_rbm=10, contrastive_divergence_iter=1, verbose=True):
         self.hidden_layers_structure = hidden_layers_structure
@@ -182,6 +188,11 @@ class BaseDBN(BaseEstimator, TransformerMixin):
         self.verbose = verbose
 
     def fit(self, data):
+        """
+        Fits a model given data.
+        :param data: array-like, shape = (n_samples, n_features)
+        :return:
+        """
         # Initialize rbm layers
         self.RBM_layers = list()
         for num_hidden_units in self.hidden_layers_structure:
@@ -195,34 +206,55 @@ class BaseDBN(BaseEstimator, TransformerMixin):
         for rbm in self.RBM_layers:
             rbm.fit(input_data)
             input_data = rbm.transform(input_data)
+        return self
 
     def transform(self, data):
+        """
+        Transforms data using the fitted model.
+        :param data: array-like, shape = (n_samples, n_features)
+        :return:
+        """
         input_data = data
         for rbm in self.RBM_layers:
             input_data = rbm.transform(input_data)
         return input_data
 
 
-class DBNPredictor(BaseDBN):
+class AbstractSupervisedDBN(UnsupervisedDBN):
+    """
+    Abstract class for supervised Deep Belief Network.
+    """
     __metaclass__ = ABCMeta
 
     def __init__(self, hidden_layers_structure=(100, 100), optimization_algorithm='sgd', learning_rate=1e-3,
                  max_iter_backprop=100, lambda_param=1.0, max_epochs_rbm=10, contrastive_divergence_iter=1,
                  verbose=True):
-        super(DBNPredictor, self).__init__(hidden_layers_structure=hidden_layers_structure,
-                                           optimization_algorithm=optimization_algorithm, learning_rate=learning_rate,
-                                           max_epochs_rbm=max_epochs_rbm,
-                                           contrastive_divergence_iter=contrastive_divergence_iter, verbose=verbose)
+        super(AbstractSupervisedDBN, self).__init__(hidden_layers_structure=hidden_layers_structure,
+                                                    optimization_algorithm=optimization_algorithm,
+                                                    learning_rate=learning_rate, max_epochs_rbm=max_epochs_rbm,
+                                                    contrastive_divergence_iter=contrastive_divergence_iter,
+                                                    verbose=verbose)
         self.max_iter_backprop = max_iter_backprop
         self.lambda_param = lambda_param
         self.verbose = verbose
 
     def fit(self, data, labels):
-        super(DBNPredictor, self).fit(data)
+        """
+        Fits a model given data.
+        :param data: array-like, shape = (n_samples, n_features)
+        :param labels : array-like, shape = (n_samples, )
+        :return:
+        """
+        super(AbstractSupervisedDBN, self).fit(data)
         self.__fine_tuning(data, labels)
         return self
 
     def predict(self, data):
+        """
+        Predicts the target given data.
+        :param data: array-like, shape = (n_samples, n_features)
+        :return:
+        """
         transformed_data = self.transform(data)
         if len(data.shape) is 1:  # It is a single sample
             sample = transformed_data
@@ -232,6 +264,11 @@ class DBNPredictor(BaseDBN):
         return labels
 
     def __compute_activations(self, sample):
+        """
+        Compute output values of all layers.
+        :param sample: array-like, shape = (n_features, )
+        :return:
+        """
         input_data = sample
         layers_activation = list()
 
@@ -246,6 +283,12 @@ class DBNPredictor(BaseDBN):
         return layers_activation
 
     def __stochastic_gradient_descent(self, _data, _labels):
+        """
+        Performs stochastic gradient descend optimization algorithm.
+        :param _data: array-like, shape = (n_samples, n_features)
+        :param _labels: array-like, shape = (n_samples, targets)
+        :return:
+        """
         if self.verbose:
             matrix_error = np.zeros([len(_data), self.num_classes])
         num_samples = len(_data)
@@ -276,6 +319,12 @@ class DBNPredictor(BaseDBN):
                 print ">> Epoch %d finished \tPrediction error %f" % (iteration, error)
 
     def __backpropagation(self, input_vector, label):
+        """
+        Performs Backpropagation algorithm for computing gradients.
+        :param input_vector: array-like, shape = (n_features, )
+        :param label: array-like, shape = (n_targets, )
+        :return:
+        """
         x, y = input_vector, label
         deltas = list()
         list_layer_weights = list()
@@ -316,6 +365,12 @@ class DBNPredictor(BaseDBN):
         return layer_gradient_weights, layer_gradient_bias, np.abs(y - activation_output_layer)
 
     def __fine_tuning(self, data, _labels):
+        """
+        Entry point of the fine tuning procedure.
+        :param data: array-like, shape = (n_samples, n_features)
+        :param _labels: array-like, shape = (n_samples, targets)
+        :return:
+        """
         self.num_classes = len(np.unique(_labels))
         self.W = 0.01 * np.random.randn(self.num_classes, self.RBM_layers[-1].num_hidden_units)
         self.b = 0.01 * np.random.randn(self.num_classes)
@@ -344,7 +399,10 @@ class DBNPredictor(BaseDBN):
         return
 
 
-class DBNClassification(DBNPredictor, ClassifierMixin):
+class DBNClassification(AbstractSupervisedDBN, ClassifierMixin):
+    """
+    This class implements a Deep Belief Network for classification problems.
+    """
     def __init__(self, hidden_layers_structure=(100, 100), optimization_algorithm='sgd', learning_rate=1e-3,
                  max_iter_backprop=100, lambda_param=1.0, max_epochs_rbm=10, contrastive_divergence_iter=1,
                  verbose=True):
@@ -356,6 +414,12 @@ class DBNClassification(DBNPredictor, ClassifierMixin):
                                                 lambda_param=lambda_param)
 
     def __transform_labels_to_network_format(self, labels):
+        """
+        Converts labels as single integer to row vectors. For instance, given a three class problem, labels would be
+        mapped as 1: [1 0 0], 2: [0 1 0], 3: [0, 0, 1].
+        :param labels: array-like, shape = (n_samples, targets)
+        :return:
+        """
         new_labels = np.zeros([len(labels), self.num_classes])
         i = 0
         for label in labels:
@@ -364,18 +428,37 @@ class DBNClassification(DBNPredictor, ClassifierMixin):
         return new_labels
 
     def __compute_output_units(self, vector_visible_units):
+        """
+        Compute activations of output units.
+        :param vector_visible_units: array-like, shape = (n_features, )
+        :return:
+        """
         v = vector_visible_units
         return BinaryRBM.sigmoid(np.dot(self.W, v) + self.b)
 
     def __compute_output_units_matrix(self, matrix_visible_units):
+        """
+        Compute activations of output units.
+        :param matrix_visible_units: shape = (n_samples, n_features)
+        :return:
+        """
         return np.transpose(
             BinaryRBM.sigmoid(np.dot(self.W, np.transpose(matrix_visible_units)) + self.b[:, np.newaxis]))
 
     def __compute_output_layer_delta(self, label, predicted):
+        """
+        Compute deltas of the output layer, using cross-entropy cost function.
+        :param label: array-like, shape = (n_features, )
+        :param predicted: array-like, shape = (n_features, )
+        :return:
+        """
         return -(label - predicted)
 
 
-class DBNRegression(DBNPredictor, RegressorMixin):
+class DBNRegression(AbstractSupervisedDBN, RegressorMixin):
+    """
+    This class implements a Deep Belief Network for regression problems.
+    """
     def __init__(self, hidden_layers_structure=(100, 100), optimization_algorithm='sgd', learning_rate=1e-3,
                  max_iter_backprop=100, lambda_param=1.0, max_epochs_rbm=10, contrastive_divergence_iter=1,
                  verbose=True):
@@ -386,14 +469,35 @@ class DBNRegression(DBNPredictor, RegressorMixin):
                                             max_iter_backprop=max_iter_backprop, lambda_param=lambda_param)
 
     def __transform_labels_to_network_format(self, labels):
+        """
+        Returns the same labels since regression case does not need to convert anything.
+        :param labels: array-like, shape = (n_samples, targets)
+        :return:
+        """
         return labels
 
     def __compute_output_units(self, vector_visible_units):
+        """
+        Compute activations of output units.
+        :param vector_visible_units: array-like, shape = (n_features, )
+        :return:
+        """
         v = vector_visible_units
         return np.dot(self.W, v) + self.b
 
     def __compute_output_units_matrix(self, matrix_visible_units):
+        """
+        Compute activations of output units.
+        :param matrix_visible_units: shape = (n_samples, n_features)
+        :return:
+        """
         return np.transpose(np.dot(self.W, np.transpose(matrix_visible_units)) + self.b[:, np.newaxis])
 
     def __compute_output_layer_delta(self, label, predicted):
+        """
+        Compute deltas of the output layer for the regression case, using common (one-half) squared-error cost function.
+        :param label: array-like, shape = (n_features, )
+        :param predicted: array-like, shape = (n_features, )
+        :return:
+        """
         return -(label - predicted)
