@@ -188,7 +188,7 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
     This class implements a unsupervised Deep Belief Network.
     """
 
-    def __init__(self, hidden_layers_structure=(100, 100), optimization_algorithm='sgd', learning_rate=1e-3,
+    def __init__(self, hidden_layers_structure=[100, 100], optimization_algorithm='sgd', learning_rate=1e-3,
                  max_epochs_rbm=10, contrastive_divergence_iter=1, verbose=True):
         self.hidden_layers_structure = hidden_layers_structure
         self.optimization_algorithm = optimization_algorithm
@@ -237,7 +237,7 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
     """
     __metaclass__ = ABCMeta
 
-    def __init__(self, hidden_layers_structure=(100, 100), optimization_algorithm='sgd', learning_rate=1e-3,
+    def __init__(self, hidden_layers_structure=[100, 100], optimization_algorithm='sgd', learning_rate=1e-3,
                  learning_rate_rbm=1e-3, max_iter_backprop=100, lambda_param=1.0, max_epochs_rbm=10,
                  contrastive_divergence_iter=1, verbose=True):
         super(AbstractSupervisedDBN, self).__init__(hidden_layers_structure=hidden_layers_structure,
