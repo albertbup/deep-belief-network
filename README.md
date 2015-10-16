@@ -14,7 +14,6 @@ This implementation follows [scikit-learn](http://scikit-learn.org) guidelines a
     
     from dbn.models import SupervisedDBNClassification
     
-    
     # Loading dataset
     digits = load_digits()
     X, Y = digits.data, digits.target
@@ -35,13 +34,8 @@ This implementation follows [scikit-learn](http://scikit-learn.org) guidelines a
     # Test
     Y_pred = classifier.predict(X_test)
     print 'Done.\nAccuracy: %f' % accuracy_score(Y_test, Y_pred)
-    
-## Requierements
-NumPy and scikit-learn packages must be installed in the system. If aren't, simply do:
-    
-    pip install numpy
-    pip install scikit-learn
-  
-## Installation
 
-    pip install git+git://github.com/albertbup/deep-belief-network.git@master
+## Installation
+Open a terminal and type the following line:
+
+    pip install git+git://github.com/albertbup/deep-belief-network.git
