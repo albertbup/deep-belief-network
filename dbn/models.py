@@ -49,7 +49,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         self.b = np.random.randn(self.num_visible_units) / np.sqrt(self.num_visible_units)
 
         if self.optimization_algorithm is 'sgd':
-            self.__stochastic_gradient_descent(data)
+            self._stochastic_gradient_descent(data)
         else:
             raise ValueError("Invalid optimization algorithm.")
         return self
@@ -62,19 +62,19 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         """
         if len(data.shape) is 1:  # It is a single sample
             sample = data
-            return self.__compute_hidden_units(sample)
-        transformed_data = self.__compute_hidden_units_matrix(data)
+            return self._compute_hidden_units(sample)
+        transformed_data = self._compute_hidden_units_matrix(data)
         return transformed_data
 
-    def __reconstruct(self, transformed_data):
+    def _reconstruct(self, transformed_data):
         """
         Reconstruct visible units given the hidden layer output.
         :param transformed_data: array-like, shape = (n_samples, n_features)
         :return:
         """
-        return self.__compute_visible_units_matrix(transformed_data)
+        return self._compute_visible_units_matrix(transformed_data)
 
-    def __stochastic_gradient_descent(self, _data):
+    def _stochastic_gradient_descent(self, _data):
         """
         Performs stochastic gradient descend optimization algorithm.
         :param _data: array-like, shape = (n_samples, n_features)
@@ -84,15 +84,15 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
             idx = np.random.permutation(len(_data))
             data = _data[idx]
             for sample in data:
-                delta_W, delta_b, delta_c = self.__contrastive_divergence(sample)
+                delta_W, delta_b, delta_c = self._contrastive_divergence(sample)
                 self.W += self.learning_rate * delta_W
                 self.b += self.learning_rate * delta_b
                 self.c += self.learning_rate * delta_c
             if self.verbose:
-                error = self.__compute_reconstruction_error(data)
+                error = self._compute_reconstruction_error(data)
                 print ">> Epoch %d finished \tReconstruction error %f" % (iteration, error)
 
-    def __contrastive_divergence(self, vector_visible_units):
+    def _contrastive_divergence(self, vector_visible_units):
         """
         Computes gradients using Contrastive Divergence method.
         :param vector_visible_units: array-like, shape = (n_features, )
@@ -103,20 +103,20 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
 
         # Sampling
         for t in range(self.contrastive_divergence_iter):
-            h_t = self.__compute_hidden_units(v_t)
-            v_t = self.__compute_visible_units(h_t)
+            h_t = self._compute_hidden_units(v_t)
+            v_t = self._compute_visible_units(h_t)
 
         # Computing deltas
         v_k = v_t
-        h_0 = self.__compute_hidden_units(v_0)
-        h_k = self.__compute_hidden_units(v_k)
+        h_0 = self._compute_hidden_units(v_0)
+        h_k = self._compute_hidden_units(v_k)
         delta_W = np.outer(h_0, v_0) - np.outer(h_k, v_k)
         delta_b = v_0 - v_k
         delta_c = h_0 - h_k
 
         return delta_W, delta_b, delta_c
 
-    def __compute_hidden_units(self, vector_visible_units):
+    def _compute_hidden_units(self, vector_visible_units):
         """
         Computes hidden unit outputs.
         :param vector_visible_units: array-like, shape = (n_features, )
@@ -125,7 +125,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         v = vector_visible_units
         return self.sigmoid(np.dot(self.W, v) + self.c)
 
-    def __compute_hidden_units_matrix(self, matrix_visible_units):
+    def _compute_hidden_units_matrix(self, matrix_visible_units):
         """
         Computes hidden unit outputs.
         :param matrix_visible_units: array-like, shape = (n_samples, n_features)
@@ -134,7 +134,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         return np.transpose(
             self.sigmoid(np.dot(self.W, np.transpose(matrix_visible_units)) + self.c[:, np.newaxis]))
 
-    def __compute_visible_units(self, vector_hidden_units):
+    def _compute_visible_units(self, vector_hidden_units):
         """
         Computes visible (or input) unit outputs.
         :param vector_hidden_units: array-like, shape = (n_features, )
@@ -143,7 +143,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         h = vector_hidden_units
         return self.sigmoid(np.dot(h, self.W) + self.b)
 
-    def __compute_visible_units_matrix(self, matrix_hidden_units):
+    def _compute_visible_units_matrix(self, matrix_hidden_units):
         """
         Computes visible (or input) unit outputs.
         :param matrix_hidden_units: array-like, shape = (n_samples, n_features)
@@ -151,25 +151,25 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         """
         return BinaryRBM.sigmoid(np.dot(matrix_hidden_units, self.W) + self.b[np.newaxis, :])
 
-    def __compute_free_energy(self, vector_visible_units):
+    def _compute_free_energy(self, vector_visible_units):
         """
         Computes the RBM free energy.
         :param vector_visible_units: array-like, shape = (n_features, )
         :return:
         """
         v = vector_visible_units
-        h = self.__compute_hidden_units(v)
+        h = self._compute_hidden_units(v)
         energy = - np.dot(self.b, v) - np.sum(np.log(1 + np.exp(h)))
         return energy
 
-    def __compute_reconstruction_error(self, data):
+    def _compute_reconstruction_error(self, data):
         """
         Computes the reconstruction error of the data.
         :param data: array-like, shape = (n_samples, n_features)
         :return:
         """
         data_transformed = self.transform(data)
-        data_reconstructed = self.__reconstruct(data_transformed)
+        data_reconstructed = self._reconstruct(data_transformed)
         return np.sum(np.linalg.norm(data_reconstructed - data, axis=1))
 
 
@@ -248,7 +248,7 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
         :return:
         """
         super(AbstractSupervisedDBN, self).fit(data)
-        self.__fine_tuning(data, labels)
+        self._fine_tuning(data, labels)
         return self
 
     def predict(self, data):
@@ -260,11 +260,11 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
         transformed_data = self.transform(data)
         if len(data.shape) is 1:  # It is a single sample
             sample = transformed_data
-            return self.compute_output_units(sample)
-        predicted_data = self.compute_output_units_matrix(transformed_data)
+            return self._compute_output_units(sample)
+        predicted_data = self._compute_output_units_matrix(transformed_data)
         return predicted_data
 
-    def __compute_activations(self, sample):
+    def _compute_activations(self, sample):
         """
         Compute output values of all layers.
         :param sample: array-like, shape = (n_features, )
@@ -278,12 +278,12 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
             layers_activation.append(input_data)
 
         # Computing activation of output layer
-        input_data = self.compute_output_units(input_data)
+        input_data = self._compute_output_units(input_data)
         layers_activation.append(input_data)
 
         return layers_activation
 
-    def __stochastic_gradient_descent(self, _data, _labels):
+    def _stochastic_gradient_descent(self, _data, _labels):
         """
         Performs stochastic gradient descend optimization algorithm.
         :param _data: array-like, shape = (n_samples, n_features)
@@ -300,7 +300,7 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
             labels = _labels[idx]
             i = 0
             for sample, label in zip(data, labels):
-                delta_W, delta_bias, error_vector = self.__backpropagation(sample, label)
+                delta_W, delta_bias, error_vector = self._backpropagation(sample, label)
                 # Updating parameters of hidden layers
                 layer = 0
                 for rbm in self.RBM_layers:
@@ -321,7 +321,7 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
                 error = np.sum(np.linalg.norm(matrix_error, axis=1))
                 print ">> Epoch %d finished \tPrediction error %f" % (iteration, error)
 
-    def __backpropagation(self, input_vector, label):
+    def _backpropagation(self, input_vector, label):
         """
         Performs Backpropagation algorithm for computing gradients.
         :param input_vector: array-like, shape = (n_features, )
@@ -336,11 +336,11 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
         list_layer_weights.append(self.W)
 
         # Forward pass
-        layers_activation = self.__compute_activations(input_vector)
+        layers_activation = self._compute_activations(input_vector)
 
         # Backward pass: computing deltas
         activation_output_layer = layers_activation[-1]
-        delta_output_layer = self.compute_output_layer_delta(y, activation_output_layer)
+        delta_output_layer = self._compute_output_layer_delta(y, activation_output_layer)
         deltas.append(delta_output_layer)
         layer_idx = range(len(self.RBM_layers))
         layer_idx.reverse()
@@ -367,43 +367,43 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
 
         return layer_gradient_weights, layer_gradient_bias, np.abs(y - activation_output_layer)
 
-    def __fine_tuning(self, data, _labels):
+    def _fine_tuning(self, data, _labels):
         """
         Entry point of the fine tuning procedure.
         :param data: array-like, shape = (n_samples, n_features)
         :param _labels: array-like, shape = (n_samples, targets)
         :return:
         """
-        self.num_classes = self.determine_num_output_neurons(_labels)
+        self.num_classes = self._determine_num_output_neurons(_labels)
         num_hidden_units_previous_layer = self.RBM_layers[-1].num_hidden_units
         self.W = np.random.randn(self.num_classes, num_hidden_units_previous_layer) / np.sqrt(
             num_hidden_units_previous_layer)
         self.b = np.random.randn(self.num_classes) / np.sqrt(num_hidden_units_previous_layer)
 
-        labels = self.transform_labels_to_network_format(_labels)
+        labels = self._transform_labels_to_network_format(_labels)
         if self.optimization_algorithm is 'sgd':
-            self.__stochastic_gradient_descent(data, labels)
+            self._stochastic_gradient_descent(data, labels)
         else:
             raise ValueError("Invalid optimization algorithm.")
 
     @abstractmethod
-    def transform_labels_to_network_format(self, labels):
+    def _transform_labels_to_network_format(self, labels):
         return
 
     @abstractmethod
-    def compute_output_units(self, vector_visible_units):
+    def _compute_output_units(self, vector_visible_units):
         return
 
     @abstractmethod
-    def compute_output_units_matrix(self, matrix_visible_units):
+    def _compute_output_units_matrix(self, matrix_visible_units):
         return
 
     @abstractmethod
-    def compute_output_layer_delta(self, label, predicted):
+    def _compute_output_layer_delta(self, label, predicted):
         return
 
     @abstractmethod
-    def determine_num_output_neurons(self, labels):
+    def _determine_num_output_neurons(self, labels):
         return
 
 
@@ -424,7 +424,7 @@ class SupervisedDBNClassification(AbstractSupervisedDBN, ClassifierMixin):
                                                           verbose=verbose, max_iter_backprop=max_iter_backprop,
                                                           lambda_param=lambda_param)
 
-    def transform_labels_to_network_format(self, labels):
+    def _transform_labels_to_network_format(self, labels):
         """
         Converts labels as single integer to row vectors. For instance, given a three class problem, labels would be
         mapped as 1: [1 0 0], 2: [0 1 0], 3: [0, 0, 1].
@@ -438,7 +438,7 @@ class SupervisedDBNClassification(AbstractSupervisedDBN, ClassifierMixin):
             i += 1
         return new_labels
 
-    def compute_output_units(self, vector_visible_units):
+    def _compute_output_units(self, vector_visible_units):
         """
         Compute activations of output units.
         :param vector_visible_units: array-like, shape = (n_features, )
@@ -447,7 +447,7 @@ class SupervisedDBNClassification(AbstractSupervisedDBN, ClassifierMixin):
         v = vector_visible_units
         return BinaryRBM.sigmoid(np.dot(self.W, v) + self.b)
 
-    def compute_output_units_matrix(self, matrix_visible_units):
+    def _compute_output_units_matrix(self, matrix_visible_units):
         """
         Compute activations of output units.
         :param matrix_visible_units: shape = (n_samples, n_features)
@@ -456,7 +456,7 @@ class SupervisedDBNClassification(AbstractSupervisedDBN, ClassifierMixin):
         return np.transpose(
             BinaryRBM.sigmoid(np.dot(self.W, np.transpose(matrix_visible_units)) + self.b[:, np.newaxis]))
 
-    def compute_output_layer_delta(self, label, predicted):
+    def _compute_output_layer_delta(self, label, predicted):
         """
         Compute deltas of the output layer, using cross-entropy cost function.
         :param label: array-like, shape = (n_features, )
@@ -470,7 +470,7 @@ class SupervisedDBNClassification(AbstractSupervisedDBN, ClassifierMixin):
         labels = np.argmax(prediction, axis=1)
         return labels
 
-    def determine_num_output_neurons(self, labels):
+    def _determine_num_output_neurons(self, labels):
         """
         Given labels, compute the needed number of output units.
         :param labels: shape = (n_samples, )
@@ -495,7 +495,7 @@ class SupervisedDBNRegression(AbstractSupervisedDBN, RegressorMixin):
                                                       verbose=verbose, max_iter_backprop=max_iter_backprop,
                                                       lambda_param=lambda_param)
 
-    def transform_labels_to_network_format(self, labels):
+    def _transform_labels_to_network_format(self, labels):
         """
         Returns the same labels since regression case does not need to convert anything.
         :param labels: array-like, shape = (n_samples, targets)
@@ -503,7 +503,7 @@ class SupervisedDBNRegression(AbstractSupervisedDBN, RegressorMixin):
         """
         return labels
 
-    def compute_output_units(self, vector_visible_units):
+    def _compute_output_units(self, vector_visible_units):
         """
         Compute activations of output units.
         :param vector_visible_units: array-like, shape = (n_features, )
@@ -512,7 +512,7 @@ class SupervisedDBNRegression(AbstractSupervisedDBN, RegressorMixin):
         v = vector_visible_units
         return np.dot(self.W, v) + self.b
 
-    def compute_output_units_matrix(self, matrix_visible_units):
+    def _compute_output_units_matrix(self, matrix_visible_units):
         """
         Compute activations of output units.
         :param matrix_visible_units: shape = (n_samples, n_features)
@@ -520,7 +520,7 @@ class SupervisedDBNRegression(AbstractSupervisedDBN, RegressorMixin):
         """
         return np.transpose(np.dot(self.W, np.transpose(matrix_visible_units)) + self.b[:, np.newaxis])
 
-    def compute_output_layer_delta(self, label, predicted):
+    def _compute_output_layer_delta(self, label, predicted):
         """
         Compute deltas of the output layer for the regression case, using common (one-half) squared-error cost function.
         :param label: array-like, shape = (n_features, )
@@ -529,7 +529,7 @@ class SupervisedDBNRegression(AbstractSupervisedDBN, RegressorMixin):
         """
         return -(label - predicted)
 
-    def determine_num_output_neurons(self, labels):
+    def _determine_num_output_neurons(self, labels):
         """
         Given labels, compute the needed number of output units.
         :param labels: shape = (n_samples, n_targets)
