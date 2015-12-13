@@ -19,17 +19,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         self.verbose = verbose
 
     @classmethod
-    def sigmoid(cls, vector):
-        """
-        Vectorized version of __sigmoid function.
-        :param vector: array-like, shape = (n_features, )
-        :return:
-        """
-        func = np.vectorize(cls.__sigmoid)
-        return func(vector)
-
-    @classmethod
-    def __sigmoid(cls, x):
+    def sigmoid(cls, x):
         """
         Sigmoid function.
         :param x: float
@@ -133,7 +123,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         :return:
         """
         v = vector_visible_units
-        return self.__sigmoid(np.dot(self.W, v) + self.c)
+        return self.sigmoid(np.dot(self.W, v) + self.c)
 
     def __compute_hidden_units_matrix(self, matrix_visible_units):
         """
@@ -142,7 +132,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         :return:
         """
         return np.transpose(
-            BinaryRBM.sigmoid(np.dot(self.W, np.transpose(matrix_visible_units)) + self.c[:, np.newaxis]))
+            self.sigmoid(np.dot(self.W, np.transpose(matrix_visible_units)) + self.c[:, np.newaxis]))
 
     def __compute_visible_units(self, vector_hidden_units):
         """
@@ -151,7 +141,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         :return:
         """
         h = vector_hidden_units
-        return self.__sigmoid(np.dot(h, self.W) + self.b)
+        return self.sigmoid(np.dot(h, self.W) + self.b)
 
     def __compute_visible_units_matrix(self, matrix_hidden_units):
         """
