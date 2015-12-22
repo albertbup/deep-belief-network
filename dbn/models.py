@@ -427,7 +427,7 @@ class SupervisedDBNClassification(AbstractSupervisedDBN, ClassifierMixin):
     def _transform_labels_to_network_format(self, labels):
         """
         Converts labels as single integer to row vectors. For instance, given a three class problem, labels would be
-        mapped as 1: [1 0 0], 2: [0 1 0], 3: [0, 0, 1].
+        mapped as 0: [1 0 0], 1: [0 1 0], 2: [0, 0, 1].
         :param labels: array-like, shape = (n_samples, targets)
         :return:
         """
