@@ -428,7 +428,7 @@ class SupervisedDBNClassification(AbstractSupervisedDBN, ClassifierMixin):
         """
         Converts labels as single integer to row vectors. For instance, given a three class problem, labels would be
         mapped as 0: [1 0 0], 1: [0 1 0], 2: [0, 0, 1].
-        :param labels: array-like, shape = (n_samples, targets)
+        :param labels: array-like, shape = (n_samples, )
         :return:
         """
         new_labels = np.zeros([len(labels), self.num_classes])
