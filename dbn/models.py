@@ -48,7 +48,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         self.c = np.random.randn(self.num_hidden_units) / np.sqrt(self.num_visible_units)
         self.b = np.random.randn(self.num_visible_units) / np.sqrt(self.num_visible_units)
 
-        if self.optimization_algorithm is 'sgd':
+        if self.optimization_algorithm == 'sgd':
             self._stochastic_gradient_descent(data)
         else:
             raise ValueError("Invalid optimization algorithm.")
@@ -60,7 +60,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         :param data: array-like, shape = (n_samples, n_features)
         :return:
         """
-        if len(data.shape) is 1:  # It is a single sample
+        if len(data.shape) == 1:  # It is a single sample
             sample = data
             return self._compute_hidden_units(sample)
         transformed_data = self._compute_hidden_units_matrix(data)
@@ -158,9 +158,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         :return:
         """
         v = vector_visible_units
-        h = self._compute_hidden_units(v)
-        energy = - np.dot(self.b, v) - np.sum(np.log(1 + np.exp(h)))
-        return energy
+        return - np.dot(self.b, v) - np.sum(np.log(1 + np.exp(np.dot(self.W, v) + self.c)))
 
     def _compute_reconstruction_error(self, data):
         """
@@ -258,7 +256,7 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
         :return:
         """
         transformed_data = self.transform(data)
-        if len(data.shape) is 1:  # It is a single sample
+        if len(data.shape) == 1:  # It is a single sample
             sample = transformed_data
             return self._compute_output_units(sample)
         predicted_data = self._compute_output_units_matrix(transformed_data)
@@ -381,7 +379,7 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
         self.b = np.random.randn(self.num_classes) / np.sqrt(num_hidden_units_previous_layer)
 
         labels = self._transform_labels_to_network_format(_labels)
-        if self.optimization_algorithm is 'sgd':
+        if self.optimization_algorithm == 'sgd':
             self._stochastic_gradient_descent(data, labels)
         else:
             raise ValueError("Invalid optimization algorithm.")
