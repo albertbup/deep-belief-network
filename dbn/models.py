@@ -425,16 +425,28 @@ class SupervisedDBNClassification(AbstractSupervisedDBN, ClassifierMixin):
     def _transform_labels_to_network_format(self, labels):
         """
         Converts labels as single integer to row vectors. For instance, given a three class problem, labels would be
-        mapped as 0: [1 0 0], 1: [0 1 0], 2: [0, 0, 1].
+        mapped as label_1: [1 0 0], label_2: [0 1 0], label_3: [0, 0, 1] where labels can be either int or string.
         :param labels: array-like, shape = (n_samples, )
         :return:
         """
         new_labels = np.zeros([len(labels), self.num_classes])
-        i = 0
-        for label in labels:
-            new_labels[i][label] = 1
-            i += 1
+        self.label_to_idx_map, self.idx_to_label_map = dict(), dict()
+        idx = 0
+        for i, label in enumerate(labels):
+            if label not in self.label_to_idx_map:
+                self.label_to_idx_map[label] = idx
+                self.idx_to_label_map[idx] = label
+                idx += 1
+            new_labels[i][self.label_to_idx_map[label]] = 1
         return new_labels
+
+    def _transform_network_format_to_labels(self, indexes):
+        """
+        Converts network output to original labels.
+        :param indexes: array-like, shape = (n_samples, )
+        :return:
+        """
+        return map(lambda idx: self.idx_to_label_map[idx], indexes)
 
     def _compute_output_units(self, vector_visible_units):
         """
@@ -465,8 +477,8 @@ class SupervisedDBNClassification(AbstractSupervisedDBN, ClassifierMixin):
 
     def predict(self, data):
         prediction = super(SupervisedDBNClassification, self).predict(data)
-        labels = np.argmax(prediction, axis=1)
-        return labels
+        indexes = np.argmax(prediction, axis=1)
+        return self._transform_network_format_to_labels(indexes)
 
     def _determine_num_output_neurons(self, labels):
         """
