@@ -36,34 +36,33 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         """
         return activations * (1 - activations)
 
-    def fit(self, data):
+    def fit(self, X):
         """
         Fit a model given data.
-        :param data: array-like, shape = (n_samples, n_features)
+        :param X: array-like, shape = (n_samples, n_features)
         :return:
         """
         # Initialize RBM parameters
-        self.num_visible_units = data.shape[1]
+        self.num_visible_units = X.shape[1]
         self.W = np.random.randn(self.num_hidden_units, self.num_visible_units) / np.sqrt(self.num_visible_units)
         self.c = np.random.randn(self.num_hidden_units) / np.sqrt(self.num_visible_units)
         self.b = np.random.randn(self.num_visible_units) / np.sqrt(self.num_visible_units)
 
         if self.optimization_algorithm == 'sgd':
-            self._stochastic_gradient_descent(data)
+            self._stochastic_gradient_descent(X)
         else:
             raise ValueError("Invalid optimization algorithm.")
         return self
 
-    def transform(self, data):
+    def transform(self, X):
         """
         Transforms data using the fitted model.
-        :param data: array-like, shape = (n_samples, n_features)
+        :param X: array-like, shape = (n_samples, n_features)
         :return:
         """
-        if len(data.shape) == 1:  # It is a single sample
-            sample = data
-            return self._compute_hidden_units(sample)
-        transformed_data = self._compute_hidden_units_matrix(data)
+        if len(X.shape) == 1:  # It is a single sample
+            return self._compute_hidden_units(X)
+        transformed_data = self._compute_hidden_units_matrix(X)
         return transformed_data
 
     def _reconstruct(self, transformed_data):
@@ -186,10 +185,10 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
         self.RBM_layers = None
         self.verbose = verbose
 
-    def fit(self, data):
+    def fit(self, X):
         """
         Fits a model given data.
-        :param data: array-like, shape = (n_samples, n_features)
+        :param X: array-like, shape = (n_samples, n_features)
         :return:
         """
         # Initialize rbm layers
@@ -201,19 +200,19 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
             self.RBM_layers.append(rbm)
 
         # Fit RBM
-        input_data = data
+        input_data = X
         for rbm in self.RBM_layers:
             rbm.fit(input_data)
             input_data = rbm.transform(input_data)
         return self
 
-    def transform(self, data):
+    def transform(self, X):
         """
         Transforms data using the fitted model.
-        :param data: array-like, shape = (n_samples, n_features)
+        :param X: array-like, shape = (n_samples, n_features)
         :return:
         """
-        input_data = data
+        input_data = X
         for rbm in self.RBM_layers:
             input_data = rbm.transform(input_data)
         return input_data
@@ -238,25 +237,25 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
         self.learning_rate = learning_rate
         self.verbose = verbose
 
-    def fit(self, data, labels):
+    def fit(self, X, y):
         """
         Fits a model given data.
-        :param data: array-like, shape = (n_samples, n_features)
-        :param labels : array-like, shape = (n_samples, )
+        :param X: array-like, shape = (n_samples, n_features)
+        :param y : array-like, shape = (n_samples, )
         :return:
         """
-        super(AbstractSupervisedDBN, self).fit(data)
-        self._fine_tuning(data, labels)
+        super(AbstractSupervisedDBN, self).fit(X)
+        self._fine_tuning(X, y)
         return self
 
-    def predict(self, data):
+    def predict(self, X):
         """
         Predicts the target given data.
-        :param data: array-like, shape = (n_samples, n_features)
+        :param X: array-like, shape = (n_samples, n_features)
         :return:
         """
-        transformed_data = self.transform(data)
-        if len(data.shape) == 1:  # It is a single sample
+        transformed_data = self.transform(X)
+        if len(X.shape) == 1:  # It is a single sample
             sample = transformed_data
             return self._compute_output_units(sample)
         predicted_data = self._compute_output_units_matrix(transformed_data)
@@ -475,8 +474,8 @@ class SupervisedDBNClassification(AbstractSupervisedDBN, ClassifierMixin):
         """
         return -(label - predicted)
 
-    def predict(self, data):
-        prediction = super(SupervisedDBNClassification, self).predict(data)
+    def predict(self, X):
+        prediction = super(SupervisedDBNClassification, self).predict(X)
         indexes = np.argmax(prediction, axis=1)
         return self._transform_network_format_to_labels(indexes)
 
