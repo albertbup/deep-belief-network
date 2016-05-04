@@ -6,6 +6,8 @@ from sklearn.preprocessing import MinMaxScaler
 from dbn.models import SupervisedDBNRegression
 
 
+
+
 # Loading dataset
 boston = load_boston()
 X, Y = boston.data, boston.target
@@ -18,8 +20,12 @@ min_max_scaler = MinMaxScaler()
 X_train = min_max_scaler.fit_transform(X_train)
 
 # Training
-classifier = SupervisedDBNRegression(hidden_layers_structure=[200], learning_rate_rbm=0.01, learning_rate=0.001,
-                                     max_epochs_rbm=100, max_iter_backprop=1000, lambda_param=0.0)
+classifier = SupervisedDBNRegression(hidden_layers_structure=[200],
+                                     learning_rate_rbm=0.01,
+                                     learning_rate=0.001,
+                                     n_epochs_rbm=100,
+                                     n_iter_backprop=1000,
+                                     l2_regularization=0.0)
 classifier.fit(X_train, Y_train)
 
 # Test

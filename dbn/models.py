@@ -9,12 +9,17 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
     This class implements a Binary Restricted Boltzmann machine.
     """
 
-    def __init__(self, num_hidden_units=100, optimization_algorithm='sgd', learning_rate=1e-3, max_epochs=10,
-                 contrastive_divergence_iter=1, verbose=True):
-        self.num_hidden_units = num_hidden_units
+    def __init__(self,
+                 n_hidden_units=100,
+                 optimization_algorithm='sgd',
+                 learning_rate=1e-3,
+                 n_epochs=10,
+                 contrastive_divergence_iter=1,
+                 verbose=True):
+        self.n_hidden_units = n_hidden_units
         self.optimization_algorithm = optimization_algorithm
         self.learning_rate = learning_rate
-        self.max_epochs = max_epochs
+        self.n_epochs = n_epochs
         self.contrastive_divergence_iter = contrastive_divergence_iter
         self.verbose = verbose
 
@@ -43,10 +48,10 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         :return:
         """
         # Initialize RBM parameters
-        self.num_visible_units = X.shape[1]
-        self.W = np.random.randn(self.num_hidden_units, self.num_visible_units) / np.sqrt(self.num_visible_units)
-        self.c = np.random.randn(self.num_hidden_units) / np.sqrt(self.num_visible_units)
-        self.b = np.random.randn(self.num_visible_units) / np.sqrt(self.num_visible_units)
+        self.n_visible_units = X.shape[1]
+        self.W = np.random.randn(self.n_hidden_units, self.n_visible_units) / np.sqrt(self.n_visible_units)
+        self.c = np.random.randn(self.n_hidden_units) / np.sqrt(self.n_visible_units)
+        self.b = np.random.randn(self.n_visible_units) / np.sqrt(self.n_visible_units)
 
         if self.optimization_algorithm == 'sgd':
             self._stochastic_gradient_descent(X)
@@ -79,7 +84,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         :param _data: array-like, shape = (n_samples, n_features)
         :return:
         """
-        for iteration in range(1, self.max_epochs + 1):
+        for iteration in range(1, self.n_epochs + 1):
             idx = np.random.permutation(len(_data))
             data = _data[idx]
             for sample in data:
@@ -175,14 +180,19 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
     This class implements a unsupervised Deep Belief Network.
     """
 
-    def __init__(self, hidden_layers_structure=[100, 100], optimization_algorithm='sgd', learning_rate=1e-3,
-                 max_epochs_rbm=10, contrastive_divergence_iter=1, verbose=True):
+    def __init__(self,
+                 hidden_layers_structure=[100, 100],
+                 optimization_algorithm='sgd',
+                 learning_rate_rbm=1e-3,
+                 n_epochs_rbm=10,
+                 contrastive_divergence_iter=1,
+                 verbose=True):
         self.hidden_layers_structure = hidden_layers_structure
         self.optimization_algorithm = optimization_algorithm
-        self.learning_rate_rbm = learning_rate
-        self.max_epochs_rbm = max_epochs_rbm
+        self.learning_rate_rbm = learning_rate_rbm
+        self.n_epochs_rbm = n_epochs_rbm
         self.contrastive_divergence_iter = contrastive_divergence_iter
-        self.RBM_layers = None
+        self.rbm_layers = None
         self.verbose = verbose
 
     def fit(self, X):
@@ -192,16 +202,19 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
         :return:
         """
         # Initialize rbm layers
-        self.RBM_layers = list()
+        self.rbm_layers = list()
         for num_hidden_units in self.hidden_layers_structure:
-            rbm = BinaryRBM(num_hidden_units=num_hidden_units, optimization_algorithm=self.optimization_algorithm,
-                            learning_rate=self.learning_rate_rbm, max_epochs=self.max_epochs_rbm,
-                            contrastive_divergence_iter=self.contrastive_divergence_iter, verbose=self.verbose)
-            self.RBM_layers.append(rbm)
+            rbm = BinaryRBM(n_hidden_units=num_hidden_units,
+                            optimization_algorithm=self.optimization_algorithm,
+                            learning_rate=self.learning_rate_rbm,
+                            n_epochs=self.n_epochs_rbm,
+                            contrastive_divergence_iter=self.contrastive_divergence_iter,
+                            verbose=self.verbose)
+            self.rbm_layers.append(rbm)
 
         # Fit RBM
         input_data = X
-        for rbm in self.RBM_layers:
+        for rbm in self.rbm_layers:
             rbm.fit(input_data)
             input_data = rbm.transform(input_data)
         return self
@@ -213,7 +226,7 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
         :return:
         """
         input_data = X
-        for rbm in self.RBM_layers:
+        for rbm in self.rbm_layers:
             input_data = rbm.transform(input_data)
         return input_data
 
@@ -224,16 +237,24 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
     """
     __metaclass__ = ABCMeta
 
-    def __init__(self, hidden_layers_structure=[100, 100], optimization_algorithm='sgd', learning_rate=1e-3,
-                 learning_rate_rbm=1e-3, max_iter_backprop=100, lambda_param=1.0, max_epochs_rbm=10,
-                 contrastive_divergence_iter=1, verbose=True):
+    def __init__(self,
+                 hidden_layers_structure=[100, 100],
+                 optimization_algorithm='sgd',
+                 learning_rate=1e-3,
+                 learning_rate_rbm=1e-3,
+                 n_iter_backprop=100,
+                 l2_regularization=1.0,
+                 n_epochs_rbm=10,
+                 contrastive_divergence_iter=1,
+                 verbose=True):
         super(AbstractSupervisedDBN, self).__init__(hidden_layers_structure=hidden_layers_structure,
                                                     optimization_algorithm=optimization_algorithm,
-                                                    learning_rate=learning_rate_rbm, max_epochs_rbm=max_epochs_rbm,
+                                                    learning_rate_rbm=learning_rate_rbm,
+                                                    n_epochs_rbm=n_epochs_rbm,
                                                     contrastive_divergence_iter=contrastive_divergence_iter,
                                                     verbose=verbose)
-        self.max_iter_backprop = max_iter_backprop
-        self.lambda_param = lambda_param
+        self.n_iter_backprop = n_iter_backprop
+        self.l2_regularization = l2_regularization
         self.learning_rate = learning_rate
         self.verbose = verbose
 
@@ -270,7 +291,7 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
         input_data = sample
         layers_activation = list()
 
-        for rbm in self.RBM_layers:
+        for rbm in self.rbm_layers:
             input_data = rbm.transform(input_data)
             layers_activation.append(input_data)
 
@@ -291,7 +312,7 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
             matrix_error = np.zeros([len(_data), self.num_classes])
         num_samples = len(_data)
 
-        for iteration in range(1, self.max_iter_backprop + 1):
+        for iteration in range(1, self.n_iter_backprop + 1):
             idx = np.random.permutation(len(_data))
             data = _data[idx]
             labels = _labels[idx]
@@ -300,16 +321,16 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
                 delta_W, delta_bias, error_vector = self._backpropagation(sample, label)
                 # Updating parameters of hidden layers
                 layer = 0
-                for rbm in self.RBM_layers:
+                for rbm in self.rbm_layers:
                     rbm.W = (1 - (
-                        self.learning_rate * self.lambda_param) / num_samples) * rbm.W - self.learning_rate * \
-                                                                                         delta_W[layer]
+                        self.learning_rate * self.l2_regularization) / num_samples) * rbm.W - self.learning_rate * \
+                                                                                              delta_W[layer]
                     rbm.c -= self.learning_rate * delta_bias[layer]
                     layer += 1
                 # Updating parameters of output layer
                 self.W = (1 - (
-                    self.learning_rate * self.lambda_param) / num_samples) * self.W - self.learning_rate * \
-                                                                                      delta_W[layer]
+                    self.learning_rate * self.l2_regularization) / num_samples) * self.W - self.learning_rate * \
+                                                                                           delta_W[layer]
                 self.b -= self.learning_rate * delta_bias[layer]
                 if self.verbose:
                     matrix_error[i, :] = error_vector
@@ -328,7 +349,7 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
         x, y = input_vector, label
         deltas = list()
         list_layer_weights = list()
-        for rbm in self.RBM_layers:
+        for rbm in self.rbm_layers:
             list_layer_weights.append(rbm.W)
         list_layer_weights.append(self.W)
 
@@ -339,7 +360,7 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
         activation_output_layer = layers_activation[-1]
         delta_output_layer = self._compute_output_layer_delta(y, activation_output_layer)
         deltas.append(delta_output_layer)
-        layer_idx = range(len(self.RBM_layers))
+        layer_idx = range(len(self.rbm_layers))
         layer_idx.reverse()
         delta_previous_layer = delta_output_layer
         for layer in layer_idx:
@@ -353,8 +374,7 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
         # Computing gradients
         layers_activation.pop()
         layers_activation.insert(0, input_vector)
-        layer_gradient_weights = list()
-        layer_gradient_bias = list()
+        layer_gradient_weights, layer_gradient_bias = list(), list()
         for layer in range(len(list_layer_weights)):
             neuron_activations = layers_activation[layer]
             delta = deltas[layer]
@@ -372,7 +392,7 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
         :return:
         """
         self.num_classes = self._determine_num_output_neurons(_labels)
-        num_hidden_units_previous_layer = self.RBM_layers[-1].num_hidden_units
+        num_hidden_units_previous_layer = self.rbm_layers[-1].num_hidden_units
         self.W = np.random.randn(self.num_classes, num_hidden_units_previous_layer) / np.sqrt(
             num_hidden_units_previous_layer)
         self.b = np.random.randn(self.num_classes) / np.sqrt(num_hidden_units_previous_layer)
@@ -409,17 +429,24 @@ class SupervisedDBNClassification(AbstractSupervisedDBN, ClassifierMixin):
     This class implements a Deep Belief Network for classification problems.
     """
 
-    def __init__(self, hidden_layers_structure=[100, 100], optimization_algorithm='sgd', learning_rate=1e-3,
-                 learning_rate_rbm=1e-3, max_iter_backprop=100, lambda_param=1.0, max_epochs_rbm=10,
-                 contrastive_divergence_iter=1, verbose=True):
+    def __init__(self,
+                 hidden_layers_structure=[100, 100],
+                 optimization_algorithm='sgd',
+                 learning_rate_rbm=1e-3,
+                 learning_rate=1e-3,
+                 n_iter_backprop=100,
+                 l2_regularization=1.0,
+                 n_epochs_rbm=10,
+                 contrastive_divergence_iter=1,
+                 verbose=True):
         super(SupervisedDBNClassification, self).__init__(hidden_layers_structure=hidden_layers_structure,
                                                           optimization_algorithm=optimization_algorithm,
-                                                          learning_rate=learning_rate,
                                                           learning_rate_rbm=learning_rate_rbm,
-                                                          max_epochs_rbm=max_epochs_rbm,
+                                                          learning_rate=learning_rate,
+                                                          n_epochs_rbm=n_epochs_rbm,
                                                           contrastive_divergence_iter=contrastive_divergence_iter,
-                                                          verbose=verbose, max_iter_backprop=max_iter_backprop,
-                                                          lambda_param=lambda_param)
+                                                          verbose=verbose, n_iter_backprop=n_iter_backprop,
+                                                          l2_regularization=l2_regularization)
 
     def _transform_labels_to_network_format(self, labels):
         """
@@ -493,16 +520,25 @@ class SupervisedDBNRegression(AbstractSupervisedDBN, RegressorMixin):
     This class implements a Deep Belief Network for regression problems.
     """
 
-    def __init__(self, hidden_layers_structure=[100, 100], optimization_algorithm='sgd', learning_rate=1e-3,
-                 learning_rate_rbm=1e-3, max_iter_backprop=100, lambda_param=1.0, max_epochs_rbm=10,
-                 contrastive_divergence_iter=1, verbose=True):
+    def __init__(self,
+                 hidden_layers_structure=[100, 100],
+                 optimization_algorithm='sgd',
+                 learning_rate_rbm=1e-3,
+                 learning_rate=1e-3,
+                 n_iter_backprop=100,
+                 l2_regularization=1.0,
+                 n_epochs_rbm=10,
+                 contrastive_divergence_iter=1,
+                 verbose=True):
         super(SupervisedDBNRegression, self).__init__(hidden_layers_structure=hidden_layers_structure,
                                                       optimization_algorithm=optimization_algorithm,
-                                                      learning_rate=learning_rate, learning_rate_rbm=learning_rate_rbm,
-                                                      max_epochs_rbm=max_epochs_rbm,
+                                                      learning_rate_rbm=learning_rate_rbm,
+                                                      learning_rate=learning_rate,
+                                                      n_epochs_rbm=n_epochs_rbm,
                                                       contrastive_divergence_iter=contrastive_divergence_iter,
-                                                      verbose=verbose, max_iter_backprop=max_iter_backprop,
-                                                      lambda_param=lambda_param)
+                                                      verbose=verbose,
+                                                      n_iter_backprop=n_iter_backprop,
+                                                      l2_regularization=l2_regularization)
 
     def _transform_labels_to_network_format(self, labels):
         """
