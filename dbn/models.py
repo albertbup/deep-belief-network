@@ -43,7 +43,7 @@ class ReLUActivationFunction(ActivationFunction):
     @classmethod
     def function(cls, x):
         """
-        Sigmoid function.
+        Rectified linear function.
         :param x: float
         :return:
         """
@@ -52,7 +52,7 @@ class ReLUActivationFunction(ActivationFunction):
     @classmethod
     def prime(cls, x):
         """
-        Compute sigmoid first derivative.
+        Rectified linear first derivative.
         :param x: array-like, shape = (n_features, )
         :return:
         """
