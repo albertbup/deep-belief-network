@@ -39,6 +39,26 @@ class SigmoidActivationFunction(ActivationFunction):
         return x * (1 - x)
 
 
+class ReLUActivationFunction(ActivationFunction):
+    @classmethod
+    def function(cls, x):
+        """
+        Sigmoid function.
+        :param x: float
+        :return:
+        """
+        return np.log(1 + np.exp(x))
+
+    @classmethod
+    def prime(cls, x):
+        """
+        Compute sigmoid first derivative.
+        :param x: array-like, shape = (n_features, )
+        :return:
+        """
+        return 1 / (1.0 + np.exp(-x))
+
+
 class BinaryRBM(BaseEstimator, TransformerMixin):
     """
     This class implements a Binary Restricted Boltzmann machine.
@@ -74,6 +94,8 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
 
         if self.activation_function == 'sigmoid':
             self._activation_function_class = SigmoidActivationFunction
+        elif self.activation_function == 'relu':
+            self._activation_function_class = ReLUActivationFunction
         else:
             raise ValueError("Invalid activation function.")
 
@@ -159,7 +181,8 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         :param matrix_visible_units: array-like, shape = (n_samples, n_features)
         :return:
         """
-        return np.transpose(self._activation_function_class.function(np.dot(self.W, np.transpose(matrix_visible_units)) + self.c[:, np.newaxis]))
+        return np.transpose(self._activation_function_class.function(
+            np.dot(self.W, np.transpose(matrix_visible_units)) + self.c[:, np.newaxis]))
 
     def _compute_visible_units(self, vector_hidden_units):
         """
@@ -228,6 +251,8 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
         """
         if self.activation_function == 'sigmoid':
             self._activation_function_class = SigmoidActivationFunction
+        elif self.activation_function == 'relu':
+            self._activation_function_class = ReLUActivationFunction
         else:
             raise ValueError("Invalid activation function.")
 
@@ -464,6 +489,7 @@ class SupervisedDBNClassification(AbstractSupervisedDBN, ClassifierMixin):
 
     def __init__(self,
                  hidden_layers_structure=[100, 100],
+                 activation_function='sigmoid',
                  optimization_algorithm='sgd',
                  learning_rate_rbm=1e-3,
                  learning_rate=1e-3,
@@ -473,6 +499,7 @@ class SupervisedDBNClassification(AbstractSupervisedDBN, ClassifierMixin):
                  contrastive_divergence_iter=1,
                  verbose=True):
         super(SupervisedDBNClassification, self).__init__(hidden_layers_structure=hidden_layers_structure,
+                                                          activation_function=activation_function,
                                                           optimization_algorithm=optimization_algorithm,
                                                           learning_rate_rbm=learning_rate_rbm,
                                                           learning_rate=learning_rate,
@@ -522,7 +549,8 @@ class SupervisedDBNClassification(AbstractSupervisedDBN, ClassifierMixin):
         :param matrix_visible_units: shape = (n_samples, n_features)
         :return:
         """
-        return np.transpose(self._activation_function_class.function(np.dot(self.W, np.transpose(matrix_visible_units)) + self.b[:, np.newaxis]))
+        return np.transpose(self._activation_function_class.function(
+            np.dot(self.W, np.transpose(matrix_visible_units)) + self.b[:, np.newaxis]))
 
     def _compute_output_layer_delta(self, label, predicted):
         """
@@ -554,6 +582,7 @@ class SupervisedDBNRegression(AbstractSupervisedDBN, RegressorMixin):
 
     def __init__(self,
                  hidden_layers_structure=[100, 100],
+                 activation_function='sigmoid',
                  optimization_algorithm='sgd',
                  learning_rate_rbm=1e-3,
                  learning_rate=1e-3,
@@ -563,6 +592,7 @@ class SupervisedDBNRegression(AbstractSupervisedDBN, RegressorMixin):
                  contrastive_divergence_iter=1,
                  verbose=True):
         super(SupervisedDBNRegression, self).__init__(hidden_layers_structure=hidden_layers_structure,
+                                                      activation_function=activation_function,
                                                       optimization_algorithm=optimization_algorithm,
                                                       learning_rate_rbm=learning_rate_rbm,
                                                       learning_rate=learning_rate,
