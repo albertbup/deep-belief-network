@@ -6,7 +6,6 @@ import numpy as np
 from dbn.models import SupervisedDBNClassification
 
 
-
 # Loading dataset
 digits = load_digits()
 X, Y = digits.data, digits.target
@@ -23,11 +22,10 @@ classifier = SupervisedDBNClassification(hidden_layers_structure=[256, 256],
                                          learning_rate_rbm=0.01,
                                          learning_rate=0.001,
                                          n_epochs_rbm=30,
-                                         n_iter_backprop=1000,
+                                         n_iter_backprop=100,
                                          l2_regularization=0.0)
 classifier.fit(X_train, Y_train)
 
 # Test
 Y_pred = classifier.predict(X_test)
 print 'Done.\nAccuracy: %f' % accuracy_score(Y_test, Y_pred)
-

@@ -203,8 +203,8 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
         """
         # Initialize rbm layers
         self.rbm_layers = list()
-        for num_hidden_units in self.hidden_layers_structure:
-            rbm = BinaryRBM(n_hidden_units=num_hidden_units,
+        for n_hidden_units in self.hidden_layers_structure:
+            rbm = BinaryRBM(n_hidden_units=n_hidden_units,
                             optimization_algorithm=self.optimization_algorithm,
                             learning_rate=self.learning_rate_rbm,
                             n_epochs=self.n_epochs_rbm,
@@ -392,10 +392,10 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
         :return:
         """
         self.num_classes = self._determine_num_output_neurons(_labels)
-        num_hidden_units_previous_layer = self.rbm_layers[-1].num_hidden_units
-        self.W = np.random.randn(self.num_classes, num_hidden_units_previous_layer) / np.sqrt(
-            num_hidden_units_previous_layer)
-        self.b = np.random.randn(self.num_classes) / np.sqrt(num_hidden_units_previous_layer)
+        n_hidden_units_previous_layer = self.rbm_layers[-1].n_hidden_units
+        self.W = np.random.randn(self.num_classes, n_hidden_units_previous_layer) / np.sqrt(
+            n_hidden_units_previous_layer)
+        self.b = np.random.randn(self.num_classes) / np.sqrt(n_hidden_units_previous_layer)
 
         labels = self._transform_labels_to_network_format(_labels)
         if self.optimization_algorithm == 'sgd':
