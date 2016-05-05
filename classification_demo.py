@@ -23,7 +23,7 @@ X_train = min_max_scaler.fit_transform(X_train)
 classifier = SupervisedDBNClassification(hidden_layers_structure=[256, 256],
                                          learning_rate_rbm=0.01,
                                          learning_rate=0.001,
-                                         n_epochs_rbm=30,
+                                         n_epochs_rbm=1,
                                          n_iter_backprop=100,
                                          l2_regularization=0.0,
                                          activation_function='relu')

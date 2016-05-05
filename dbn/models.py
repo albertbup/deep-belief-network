@@ -140,7 +140,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
                 self.c += self.learning_rate * delta_c
             if self.verbose:
                 error = self._compute_reconstruction_error(data)
-                print ">> Epoch %d finished \tReconstruction error %f" % (iteration, error)
+                print ">> Epoch %d finished \tRBM Reconstruction error %f" % (iteration, error)
 
     def _contrastive_divergence(self, vector_visible_units):
         """
@@ -269,10 +269,14 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
             self.rbm_layers.append(rbm)
 
         # Fit RBM
+        if self.verbose:
+            print "[START] Pre-training step:"
         input_data = X
         for rbm in self.rbm_layers:
             rbm.fit(input_data)
             input_data = rbm.transform(input_data)
+        if self.verbose:
+            print "[END] Pre-training step"
         return self
 
     def transform(self, X):
@@ -395,7 +399,7 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
                     i += 1
             if self.verbose:
                 error = np.sum(np.linalg.norm(matrix_error, axis=1))
-                print ">> Epoch %d finished \tPrediction error %f" % (iteration, error)
+                print ">> Epoch %d finished \tANN Prediction error %f" % (iteration, error)
 
     def _backpropagation(self, input_vector, label):
         """
@@ -456,10 +460,17 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
         self.b = np.random.randn(self.num_classes) / np.sqrt(n_hidden_units_previous_layer)
 
         labels = self._transform_labels_to_network_format(_labels)
+
+        if self.verbose:
+            print "[START] Fine tuning step:"
+
         if self.optimization_algorithm == 'sgd':
             self._stochastic_gradient_descent(data, labels)
         else:
             raise ValueError("Invalid optimization algorithm.")
+
+        if self.verbose:
+            print "[END] Fine tuning step"
 
     @abstractmethod
     def _transform_labels_to_network_format(self, labels):
