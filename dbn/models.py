@@ -4,27 +4,24 @@ from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin, Regre
 import numpy as np
 
 
-class BinaryRBM(BaseEstimator, TransformerMixin):
+class ActivationFunction(object):
     """
-    This class implements a Binary Restricted Boltzmann machine.
+    Class for abstract activation function.
     """
+    __metaclass__ = ABCMeta
 
-    def __init__(self,
-                 n_hidden_units=100,
-                 optimization_algorithm='sgd',
-                 learning_rate=1e-3,
-                 n_epochs=10,
-                 contrastive_divergence_iter=1,
-                 verbose=True):
-        self.n_hidden_units = n_hidden_units
-        self.optimization_algorithm = optimization_algorithm
-        self.learning_rate = learning_rate
-        self.n_epochs = n_epochs
-        self.contrastive_divergence_iter = contrastive_divergence_iter
-        self.verbose = verbose
+    @abstractmethod
+    def function(self, x):
+        return
 
+    @abstractmethod
+    def prime(self, x):
+        return
+
+
+class SigmoidActivationFunction(ActivationFunction):
     @classmethod
-    def sigmoid(cls, x):
+    def function(cls, x):
         """
         Sigmoid function.
         :param x: float
@@ -33,13 +30,35 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         return 1 / (1.0 + np.exp(-x))
 
     @classmethod
-    def sigmoid_prime(cls, activations):
+    def prime(cls, x):
         """
-        Given neuron activations, compute its first derivative.
-        :param activations: array-like, shape = (n_features, )
+        Compute sigmoid first derivative.
+        :param x: array-like, shape = (n_features, )
         :return:
         """
-        return activations * (1 - activations)
+        return x * (1 - x)
+
+
+class BinaryRBM(BaseEstimator, TransformerMixin):
+    """
+    This class implements a Binary Restricted Boltzmann machine.
+    """
+
+    def __init__(self,
+                 n_hidden_units=100,
+                 activation_function='sigmoid',
+                 optimization_algorithm='sgd',
+                 learning_rate=1e-3,
+                 n_epochs=10,
+                 contrastive_divergence_iter=1,
+                 verbose=True):
+        self.n_hidden_units = n_hidden_units
+        self.activation_function = activation_function
+        self.optimization_algorithm = optimization_algorithm
+        self.learning_rate = learning_rate
+        self.n_epochs = n_epochs
+        self.contrastive_divergence_iter = contrastive_divergence_iter
+        self.verbose = verbose
 
     def fit(self, X):
         """
@@ -52,6 +71,11 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         self.W = np.random.randn(self.n_hidden_units, self.n_visible_units) / np.sqrt(self.n_visible_units)
         self.c = np.random.randn(self.n_hidden_units) / np.sqrt(self.n_visible_units)
         self.b = np.random.randn(self.n_visible_units) / np.sqrt(self.n_visible_units)
+
+        if self.activation_function == 'sigmoid':
+            self._activation_function_class = SigmoidActivationFunction
+        else:
+            raise ValueError("Invalid activation function.")
 
         if self.optimization_algorithm == 'sgd':
             self._stochastic_gradient_descent(X)
@@ -127,7 +151,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         :return:
         """
         v = vector_visible_units
-        return self.sigmoid(np.dot(self.W, v) + self.c)
+        return self._activation_function_class.function(np.dot(self.W, v) + self.c)
 
     def _compute_hidden_units_matrix(self, matrix_visible_units):
         """
@@ -135,8 +159,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         :param matrix_visible_units: array-like, shape = (n_samples, n_features)
         :return:
         """
-        return np.transpose(
-            self.sigmoid(np.dot(self.W, np.transpose(matrix_visible_units)) + self.c[:, np.newaxis]))
+        return np.transpose(self._activation_function_class.function(np.dot(self.W, np.transpose(matrix_visible_units)) + self.c[:, np.newaxis]))
 
     def _compute_visible_units(self, vector_hidden_units):
         """
@@ -145,7 +168,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         :return:
         """
         h = vector_hidden_units
-        return self.sigmoid(np.dot(h, self.W) + self.b)
+        return self._activation_function_class.function(np.dot(h, self.W) + self.b)
 
     def _compute_visible_units_matrix(self, matrix_hidden_units):
         """
@@ -153,7 +176,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         :param matrix_hidden_units: array-like, shape = (n_samples, n_features)
         :return:
         """
-        return BinaryRBM.sigmoid(np.dot(matrix_hidden_units, self.W) + self.b[np.newaxis, :])
+        return self._activation_function_class.function(np.dot(matrix_hidden_units, self.W) + self.b[np.newaxis, :])
 
     def _compute_free_energy(self, vector_visible_units):
         """
@@ -182,12 +205,14 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
 
     def __init__(self,
                  hidden_layers_structure=[100, 100],
+                 activation_function='sigmoid',
                  optimization_algorithm='sgd',
                  learning_rate_rbm=1e-3,
                  n_epochs_rbm=10,
                  contrastive_divergence_iter=1,
                  verbose=True):
         self.hidden_layers_structure = hidden_layers_structure
+        self.activation_function = activation_function
         self.optimization_algorithm = optimization_algorithm
         self.learning_rate_rbm = learning_rate_rbm
         self.n_epochs_rbm = n_epochs_rbm
@@ -201,10 +226,16 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
         :param X: array-like, shape = (n_samples, n_features)
         :return:
         """
+        if self.activation_function == 'sigmoid':
+            self._activation_function_class = SigmoidActivationFunction
+        else:
+            raise ValueError("Invalid activation function.")
+
         # Initialize rbm layers
         self.rbm_layers = list()
         for n_hidden_units in self.hidden_layers_structure:
             rbm = BinaryRBM(n_hidden_units=n_hidden_units,
+                            activation_function=self.activation_function,
                             optimization_algorithm=self.optimization_algorithm,
                             learning_rate=self.learning_rate_rbm,
                             n_epochs=self.n_epochs_rbm,
@@ -239,6 +270,7 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
 
     def __init__(self,
                  hidden_layers_structure=[100, 100],
+                 activation_function='sigmoid',
                  optimization_algorithm='sgd',
                  learning_rate=1e-3,
                  learning_rate_rbm=1e-3,
@@ -248,6 +280,7 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
                  contrastive_divergence_iter=1,
                  verbose=True):
         super(AbstractSupervisedDBN, self).__init__(hidden_layers_structure=hidden_layers_structure,
+                                                    activation_function=activation_function,
                                                     optimization_algorithm=optimization_algorithm,
                                                     learning_rate_rbm=learning_rate_rbm,
                                                     n_epochs_rbm=n_epochs_rbm,
@@ -366,7 +399,7 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
         for layer in layer_idx:
             neuron_activations = layers_activation[layer]
             W = list_layer_weights[layer + 1]
-            delta = np.dot(delta_previous_layer, W) * BinaryRBM.sigmoid_prime(neuron_activations)
+            delta = np.dot(delta_previous_layer, W) * self._activation_function_class.prime(neuron_activations)
             deltas.append(delta)
             delta_previous_layer = delta
         deltas.reverse()
@@ -481,7 +514,7 @@ class SupervisedDBNClassification(AbstractSupervisedDBN, ClassifierMixin):
         :return:
         """
         v = vector_visible_units
-        return BinaryRBM.sigmoid(np.dot(self.W, v) + self.b)
+        return self._activation_function_class.function(np.dot(self.W, v) + self.b)
 
     def _compute_output_units_matrix(self, matrix_visible_units):
         """
@@ -489,8 +522,7 @@ class SupervisedDBNClassification(AbstractSupervisedDBN, ClassifierMixin):
         :param matrix_visible_units: shape = (n_samples, n_features)
         :return:
         """
-        return np.transpose(
-            BinaryRBM.sigmoid(np.dot(self.W, np.transpose(matrix_visible_units)) + self.b[:, np.newaxis]))
+        return np.transpose(self._activation_function_class.function(np.dot(self.W, np.transpose(matrix_visible_units)) + self.b[:, np.newaxis]))
 
     def _compute_output_layer_delta(self, label, predicted):
         """
