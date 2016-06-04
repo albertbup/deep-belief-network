@@ -47,7 +47,7 @@ class ReLUActivationFunction(ActivationFunction):
         :param x: float
         :return:
         """
-        return np.log(1 + np.exp(x))
+        return np.maximum(np.zeros(x.shape), x)
 
     @classmethod
     def prime(cls, x):
@@ -56,7 +56,7 @@ class ReLUActivationFunction(ActivationFunction):
         :param x: array-like, shape = (n_features, )
         :return:
         """
-        return 1 / (1.0 + np.exp(-x))
+        return (x > 1).astype(int)
 
 
 class BinaryRBM(BaseEstimator, TransformerMixin):
