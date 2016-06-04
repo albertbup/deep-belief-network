@@ -59,6 +59,26 @@ class ReLUActivationFunction(ActivationFunction):
         return (x > 1).astype(int)
 
 
+class TanhActivationFunction(ActivationFunction):
+    @classmethod
+    def function(cls, x):
+        """
+        Hyperbolic tangent function.
+        :param x: float
+        :return:
+        """
+        return np.tanh(x)
+
+    @classmethod
+    def prime(cls, x):
+        """
+        Hyperbolic tangent first derivative.
+        :param x: array-like, shape = (n_features, )
+        :return:
+        """
+        return 1 - x * x
+
+
 class BinaryRBM(BaseEstimator, TransformerMixin):
     """
     This class implements a Binary Restricted Boltzmann machine.
@@ -96,6 +116,8 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
             self._activation_function_class = SigmoidActivationFunction
         elif self.activation_function == 'relu':
             self._activation_function_class = ReLUActivationFunction
+        elif self.activation_function == 'tanh':
+            self._activation_function_class = TanhActivationFunction
         else:
             raise ValueError("Invalid activation function.")
 
@@ -253,6 +275,8 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
             self._activation_function_class = SigmoidActivationFunction
         elif self.activation_function == 'relu':
             self._activation_function_class = ReLUActivationFunction
+        elif self.activation_function == 'tanh':
+            self._activation_function_class = TanhActivationFunction
         else:
             raise ValueError("Invalid activation function.")
 
