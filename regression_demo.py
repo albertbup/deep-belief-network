@@ -3,7 +3,7 @@ from sklearn.cross_validation import train_test_split
 from sklearn.metrics.regression import r2_score, mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
 
-from dbn.models import SupervisedDBNRegression
+from dbn import SupervisedDBNRegression
 
 
 # Loading dataset
