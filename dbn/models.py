@@ -102,7 +102,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
 
         # Sampling
         for t in range(self.contrastive_divergence_iter):
-            h_t = self._compute_hidden_units(v_t)
+            h_t = self._sample_hidden_units(v_t)
             v_t = self._compute_visible_units(h_t)
 
         # Computing deltas
@@ -114,6 +114,21 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         delta_c = h_0 - h_k
 
         return delta_W, delta_b, delta_c
+
+    def _sample_hidden_units(self, vector_visible_units):
+        """
+        Computes hidden unit activations by sampling from a binomial distribution.
+        :param vector_visible_units: array-like, shape = (n_features, )
+        :return:
+        """
+        hidden_units = self._compute_hidden_units(vector_visible_units)
+        hidden_units[hidden_units > 1] = 1.
+        output = np.zeros(hidden_units.shape)
+        i = 0
+        for hidden_unit in hidden_units:
+            output[i] = np.random.binomial(1, hidden_unit)
+            i += 1
+        return output
 
     def _compute_hidden_units(self, vector_visible_units):
         """
