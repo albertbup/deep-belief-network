@@ -84,14 +84,15 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
                 accum_delta_W = np.zeros(self.W.shape)
                 accum_delta_b = np.zeros(self.b.shape)
                 accum_delta_c = np.zeros(self.c.shape)
+                batch_size = len(batch)
                 for sample in batch:
                     delta_W, delta_b, delta_c = self._contrastive_divergence(sample)
                     accum_delta_W += delta_W
                     accum_delta_b += delta_b
                     accum_delta_c += delta_c
-                self.W += self.learning_rate * (accum_delta_W / self.batch_size)
-                self.b += self.learning_rate * (accum_delta_b / self.batch_size)
-                self.c += self.learning_rate * (accum_delta_c / self.batch_size)
+                self.W += self.learning_rate * (accum_delta_W / batch_size)
+                self.b += self.learning_rate * (accum_delta_b / batch_size)
+                self.c += self.learning_rate * (accum_delta_c / batch_size)
             if self.verbose:
                 error = self._compute_reconstruction_error(data)
                 print ">> Epoch %d finished \tRBM Reconstruction error %f" % (iteration, error)
@@ -374,6 +375,7 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
                 accum_delta_W.append(np.zeros(self.W.shape))
                 accum_delta_bias = [np.zeros(rbm.c.shape) for rbm in self.rbm_layers]
                 accum_delta_bias.append(np.zeros(self.b.shape))
+                batch_size = len(batch_data)
                 for sample, label in zip(batch_data, batch_labels):
                     delta_W, delta_bias, error_vector = self._backpropagation(sample, label)
                     for layer in range(len(self.rbm_layers) + 1):
@@ -388,14 +390,14 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
                     # Updating parameters of hidden layers
                     rbm.W = (1 - (
                     self.learning_rate * self.l2_regularization) / num_samples) * rbm.W - self.learning_rate * (
-                    accum_delta_W[layer] / self.batch_size)
-                    rbm.c -= self.learning_rate * (accum_delta_bias[layer] / self.batch_size)
+                    accum_delta_W[layer] / batch_size)
+                    rbm.c -= self.learning_rate * (accum_delta_bias[layer] / batch_size)
                     layer += 1
                 # Updating parameters of output layer
                 self.W = (1 - (
                 self.learning_rate * self.l2_regularization) / num_samples) * self.W - self.learning_rate * (
-                accum_delta_W[layer] / self.batch_size)
-                self.b -= self.learning_rate * (accum_delta_bias[layer] / self.batch_size)
+                accum_delta_W[layer] / batch_size)
+                self.b -= self.learning_rate * (accum_delta_bias[layer] / batch_size)
 
             if self.verbose:
                 error = np.sum(np.linalg.norm(matrix_error, axis=1))
