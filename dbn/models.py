@@ -18,6 +18,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
                  learning_rate=1e-3,
                  n_epochs=10,
                  contrastive_divergence_iter=1,
+                 batch_size=32,
                  verbose=True):
         self.n_hidden_units = n_hidden_units
         self.activation_function = activation_function
@@ -25,6 +26,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         self.learning_rate = learning_rate
         self.n_epochs = n_epochs
         self.contrastive_divergence_iter = contrastive_divergence_iter
+        self.batch_size = batch_size
         self.verbose = verbose
 
     def fit(self, X):
@@ -78,14 +80,38 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         for iteration in range(1, self.n_epochs + 1):
             idx = np.random.permutation(len(_data))
             data = _data[idx]
-            for sample in data:
-                delta_W, delta_b, delta_c = self._contrastive_divergence(sample)
-                self.W += self.learning_rate * delta_W
-                self.b += self.learning_rate * delta_b
-                self.c += self.learning_rate * delta_c
+            for batch in self.get_batches(self.batch_size, data):
+                accum_delta_W = np.zeros(self.W.shape)
+                accum_delta_b = np.zeros(self.b.shape)
+                accum_delta_c = np.zeros(self.c.shape)
+                for sample in batch:
+                    delta_W, delta_b, delta_c = self._contrastive_divergence(sample)
+                    accum_delta_W += delta_W
+                    accum_delta_b += delta_b
+                    accum_delta_c += delta_c
+                self.W += self.learning_rate * (accum_delta_W / self.batch_size)
+                self.b += self.learning_rate * (accum_delta_b / self.batch_size)
+                self.c += self.learning_rate * (accum_delta_c / self.batch_size)
             if self.verbose:
                 error = self._compute_reconstruction_error(data)
                 print ">> Epoch %d finished \tRBM Reconstruction error %f" % (iteration, error)
+
+    @classmethod
+    def get_batches(cls, batch_size, data, labels=None):
+        """
+        Generates batches of samples
+        :param data: array-like, shape = (n_samples, n_features)
+        :param labels: array-like, shape = (n_samples, )
+        :return:
+        """
+        n_batches = int(np.ceil(len(data) / batch_size))
+        for i in range(n_batches):
+            start = i * batch_size
+            end = start + batch_size
+            if labels is not None:
+                yield data[start:end, :], labels[start:end]
+            else:
+                yield data[start:end, :]
 
     def _contrastive_divergence(self, vector_visible_units):
         """
@@ -193,6 +219,7 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
                  learning_rate_rbm=1e-3,
                  n_epochs_rbm=10,
                  contrastive_divergence_iter=1,
+                 batch_size=32,
                  verbose=True):
         self.hidden_layers_structure = hidden_layers_structure
         self.activation_function = activation_function
@@ -200,6 +227,7 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
         self.learning_rate_rbm = learning_rate_rbm
         self.n_epochs_rbm = n_epochs_rbm
         self.contrastive_divergence_iter = contrastive_divergence_iter
+        self.batch_size = batch_size
         self.rbm_layers = None
         self.verbose = verbose
 
@@ -223,6 +251,7 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
                             learning_rate=self.learning_rate_rbm,
                             n_epochs=self.n_epochs_rbm,
                             contrastive_divergence_iter=self.contrastive_divergence_iter,
+                            batch_size=self.batch_size,
                             verbose=self.verbose)
             self.rbm_layers.append(rbm)
 
@@ -265,6 +294,7 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
                  l2_regularization=1.0,
                  n_epochs_rbm=10,
                  contrastive_divergence_iter=1,
+                 batch_size=32,
                  verbose=True):
         super(AbstractSupervisedDBN, self).__init__(hidden_layers_structure=hidden_layers_structure,
                                                     activation_function=activation_function,
@@ -272,10 +302,12 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
                                                     learning_rate_rbm=learning_rate_rbm,
                                                     n_epochs_rbm=n_epochs_rbm,
                                                     contrastive_divergence_iter=contrastive_divergence_iter,
+                                                    batch_size=batch_size,
                                                     verbose=verbose)
         self.n_iter_backprop = n_iter_backprop
         self.l2_regularization = l2_regularization
         self.learning_rate = learning_rate
+        self.batch_size = batch_size
         self.verbose = verbose
 
     def fit(self, X, y):
@@ -337,24 +369,34 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
             data = _data[idx]
             labels = _labels[idx]
             i = 0
-            for sample, label in zip(data, labels):
-                delta_W, delta_bias, error_vector = self._backpropagation(sample, label)
-                # Updating parameters of hidden layers
+            for batch_data, batch_labels in BinaryRBM.get_batches(self.batch_size, data, labels):
+                accum_delta_W = [np.zeros(rbm.W.shape) for rbm in self.rbm_layers]
+                accum_delta_W.append(np.zeros(self.W.shape))
+                accum_delta_bias = [np.zeros(rbm.c.shape) for rbm in self.rbm_layers]
+                accum_delta_bias.append(np.zeros(self.b.shape))
+                for sample, label in zip(batch_data, batch_labels):
+                    delta_W, delta_bias, error_vector = self._backpropagation(sample, label)
+                    for layer in range(len(self.rbm_layers) + 1):
+                        accum_delta_W[layer] += delta_W[layer]
+                        accum_delta_bias[layer] += delta_bias[layer]
+                    if self.verbose:
+                        matrix_error[i, :] = error_vector
+                        i += 1
+
                 layer = 0
                 for rbm in self.rbm_layers:
+                    # Updating parameters of hidden layers
                     rbm.W = (1 - (
-                        self.learning_rate * self.l2_regularization) / num_samples) * rbm.W - self.learning_rate * \
-                                                                                              delta_W[layer]
-                    rbm.c -= self.learning_rate * delta_bias[layer]
+                    self.learning_rate * self.l2_regularization) / num_samples) * rbm.W - self.learning_rate * (
+                    accum_delta_W[layer] / self.batch_size)
+                    rbm.c -= self.learning_rate * (accum_delta_bias[layer] / self.batch_size)
                     layer += 1
                 # Updating parameters of output layer
                 self.W = (1 - (
-                    self.learning_rate * self.l2_regularization) / num_samples) * self.W - self.learning_rate * \
-                                                                                           delta_W[layer]
-                self.b -= self.learning_rate * delta_bias[layer]
-                if self.verbose:
-                    matrix_error[i, :] = error_vector
-                    i += 1
+                self.learning_rate * self.l2_regularization) / num_samples) * self.W - self.learning_rate * (
+                accum_delta_W[layer] / self.batch_size)
+                self.b -= self.learning_rate * (accum_delta_bias[layer] / self.batch_size)
+
             if self.verbose:
                 error = np.sum(np.linalg.norm(matrix_error, axis=1))
                 print ">> Epoch %d finished \tANN Prediction error %f" % (iteration, error)
@@ -466,6 +508,7 @@ class SupervisedDBNClassification(AbstractSupervisedDBN, ClassifierMixin):
                  l2_regularization=1.0,
                  n_epochs_rbm=10,
                  contrastive_divergence_iter=1,
+                 batch_size=32,
                  verbose=True):
         super(SupervisedDBNClassification, self).__init__(hidden_layers_structure=hidden_layers_structure,
                                                           activation_function=activation_function,
@@ -475,7 +518,8 @@ class SupervisedDBNClassification(AbstractSupervisedDBN, ClassifierMixin):
                                                           n_epochs_rbm=n_epochs_rbm,
                                                           contrastive_divergence_iter=contrastive_divergence_iter,
                                                           verbose=verbose, n_iter_backprop=n_iter_backprop,
-                                                          l2_regularization=l2_regularization)
+                                                          l2_regularization=l2_regularization,
+                                                          batch_size=batch_size)
 
     def _transform_labels_to_network_format(self, labels):
         """
@@ -559,6 +603,7 @@ class SupervisedDBNRegression(AbstractSupervisedDBN, RegressorMixin):
                  l2_regularization=1.0,
                  n_epochs_rbm=10,
                  contrastive_divergence_iter=1,
+                 batch_size=32,
                  verbose=True):
         super(SupervisedDBNRegression, self).__init__(hidden_layers_structure=hidden_layers_structure,
                                                       activation_function=activation_function,
@@ -569,7 +614,8 @@ class SupervisedDBNRegression(AbstractSupervisedDBN, RegressorMixin):
                                                       contrastive_divergence_iter=contrastive_divergence_iter,
                                                       verbose=verbose,
                                                       n_iter_backprop=n_iter_backprop,
-                                                      l2_regularization=l2_regularization)
+                                                      l2_regularization=l2_regularization,
+                                                      batch_size=batch_size)
 
     def _transform_labels_to_network_format(self, labels):
         """

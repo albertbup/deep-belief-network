@@ -20,10 +20,11 @@ X_train = min_max_scaler.fit_transform(X_train)
 # Training
 regressor = SupervisedDBNRegression(hidden_layers_structure=[200],
                                     learning_rate_rbm=0.01,
-                                    learning_rate=0.001,
+                                    learning_rate=0.05,
                                     n_epochs_rbm=100,
                                     n_iter_backprop=500,
-                                    l2_regularization=0.0)
+                                    l2_regularization=0.0,
+                                    batch_size=32)
 regressor.fit(X_train, Y_train)
 
 # Test
