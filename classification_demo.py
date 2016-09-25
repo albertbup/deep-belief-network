@@ -1,8 +1,8 @@
+import numpy as np
+
 from sklearn.datasets import load_digits
 from sklearn.cross_validation import train_test_split
 from sklearn.metrics.classification import accuracy_score
-import numpy as np
-
 from dbn import SupervisedDBNClassification
 
 
@@ -22,8 +22,7 @@ classifier = SupervisedDBNClassification(hidden_layers_structure=[256, 256],
                                          learning_rate=0.001,
                                          n_epochs_rbm=20,
                                          n_iter_backprop=100,
-                                         l2_regularization=0.0,
-                                         activation_function='relu')
+                                         l2_regularization=0.0)
 classifier.fit(X_train, Y_train)
 
 # Test

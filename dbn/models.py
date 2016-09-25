@@ -1,9 +1,9 @@
 from abc import ABCMeta, abstractmethod
 
-from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin, RegressorMixin
 import numpy as np
 
-from .activations import ReLUActivationFunction, TanhActivationFunction, SigmoidActivationFunction
+from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin, RegressorMixin
+from .activations import SigmoidActivationFunction
 
 
 class BinaryRBM(BaseEstimator, TransformerMixin):
@@ -41,10 +41,6 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
 
         if self.activation_function == 'sigmoid':
             self._activation_function_class = SigmoidActivationFunction
-        elif self.activation_function == 'relu':
-            self._activation_function_class = ReLUActivationFunction
-        elif self.activation_function == 'tanh':
-            self._activation_function_class = TanhActivationFunction
         else:
             raise ValueError("Invalid activation function.")
 
@@ -215,10 +211,6 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
         """
         if self.activation_function == 'sigmoid':
             self._activation_function_class = SigmoidActivationFunction
-        elif self.activation_function == 'relu':
-            self._activation_function_class = ReLUActivationFunction
-        elif self.activation_function == 'tanh':
-            self._activation_function_class = TanhActivationFunction
         else:
             raise ValueError("Invalid activation function.")
 
