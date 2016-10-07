@@ -377,31 +377,32 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
                 accum_delta_bias.append(np.zeros(self.b.shape))
                 batch_size = len(batch_data)
                 for sample, label in zip(batch_data, batch_labels):
-                    delta_W, delta_bias, error_vector = self._backpropagation(sample, label)
+                    delta_W, delta_bias, probs = self._backpropagation(sample, label)
                     for layer in range(len(self.rbm_layers) + 1):
                         accum_delta_W[layer] += delta_W[layer]
                         accum_delta_bias[layer] += delta_bias[layer]
                     if self.verbose:
-                        matrix_error[i, :] = error_vector
+                        loss = self._compute_loss(probs, label)
+                        matrix_error[i, :] = loss
                         i += 1
 
                 layer = 0
                 for rbm in self.rbm_layers:
                     # Updating parameters of hidden layers
                     rbm.W = (1 - (
-                    self.learning_rate * self.l2_regularization) / num_samples) * rbm.W - self.learning_rate * (
-                    accum_delta_W[layer] / batch_size)
+                        self.learning_rate * self.l2_regularization) / num_samples) * rbm.W - self.learning_rate * (
+                        accum_delta_W[layer] / batch_size)
                     rbm.c -= self.learning_rate * (accum_delta_bias[layer] / batch_size)
                     layer += 1
                 # Updating parameters of output layer
                 self.W = (1 - (
-                self.learning_rate * self.l2_regularization) / num_samples) * self.W - self.learning_rate * (
-                accum_delta_W[layer] / batch_size)
+                    self.learning_rate * self.l2_regularization) / num_samples) * self.W - self.learning_rate * (
+                    accum_delta_W[layer] / batch_size)
                 self.b -= self.learning_rate * (accum_delta_bias[layer] / batch_size)
 
             if self.verbose:
-                error = np.sum(np.linalg.norm(matrix_error, axis=1))
-                print ">> Epoch %d finished \tANN Prediction error %f" % (iteration, error)
+                error = np.sum(matrix_error) / len(_data)
+                print ">> Epoch %d finished \tANN training softmax loss %f" % (iteration, error)
 
     def _backpropagation(self, input_vector, label):
         """
@@ -427,10 +428,15 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
         layer_idx = range(len(self.rbm_layers))
         layer_idx.reverse()
         delta_previous_layer = delta_output_layer
+        last_hidden_layer = True
         for layer in layer_idx:
             neuron_activations = layers_activation[layer]
             W = list_layer_weights[layer + 1]
-            delta = np.dot(delta_previous_layer, W) * self._activation_function_class.prime(neuron_activations)
+            if last_hidden_layer:
+                delta = np.dot(delta_previous_layer, W)
+                last_hidden_layer = False
+            else:
+                delta = np.dot(delta_previous_layer, W) * self._activation_function_class.prime(neuron_activations)
             deltas.append(delta)
             delta_previous_layer = delta
         deltas.reverse()
@@ -446,7 +452,10 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
             layer_gradient_weights.append(gradient_W)
             layer_gradient_bias.append(delta)
 
-        return layer_gradient_weights, layer_gradient_bias, np.abs(y - activation_output_layer)
+        return layer_gradient_weights, layer_gradient_bias, activation_output_layer
+
+    def _compute_loss(self, probs, label):
+        return -np.log(probs[np.where(label == 1)])
 
     def _fine_tuning(self, data, _labels):
         """
@@ -556,7 +565,11 @@ class SupervisedDBNClassification(AbstractSupervisedDBN, ClassifierMixin):
         :return:
         """
         v = vector_visible_units
-        return self._activation_function_class.function(np.dot(self.W, v) + self.b)
+        scores = np.dot(self.W, v) + self.b
+        # get unnormalized probabilities
+        exp_scores = np.exp(scores)
+        # normalize them for each example
+        return exp_scores / np.sum(exp_scores)
 
     def _compute_output_units_matrix(self, matrix_visible_units):
         """
@@ -574,7 +587,9 @@ class SupervisedDBNClassification(AbstractSupervisedDBN, ClassifierMixin):
         :param predicted: array-like, shape = (n_features, )
         :return:
         """
-        return -(label - predicted)
+        dscores = np.array(predicted)
+        dscores[np.where(label == 1)] -= 1
+        return dscores
 
     def predict(self, X):
         prediction = super(SupervisedDBNClassification, self).predict(X)
