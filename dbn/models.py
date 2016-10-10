@@ -3,7 +3,7 @@ from abc import ABCMeta, abstractmethod
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin, RegressorMixin
 
-from .activations import SigmoidActivationFunction
+from .activations import SigmoidActivationFunction, ReLUActivationFunction
 
 
 class BinaryRBM(BaseEstimator, TransformerMixin):
@@ -43,6 +43,8 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
 
         if self.activation_function == 'sigmoid':
             self._activation_function_class = SigmoidActivationFunction
+        elif self.activation_function == 'relu':
+            self._activation_function_class = ReLUActivationFunction
         else:
             raise ValueError("Invalid activation function.")
 
@@ -240,6 +242,8 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
         """
         if self.activation_function == 'sigmoid':
             self._activation_function_class = SigmoidActivationFunction
+        elif self.activation_function == 'relu':
+            self._activation_function_class = ReLUActivationFunction
         else:
             raise ValueError("Invalid activation function.")
 
@@ -578,8 +582,9 @@ class SupervisedDBNClassification(AbstractSupervisedDBN, ClassifierMixin):
         :param matrix_visible_units: shape = (n_samples, n_features)
         :return:
         """
-        return np.transpose(self._activation_function_class.function(
-            np.dot(self.W, np.transpose(matrix_visible_units)) + self.b[:, np.newaxis]))
+        matrix_scores = np.transpose(np.dot(self.W, np.transpose(matrix_visible_units)) + self.b[:, np.newaxis])
+        exp_scores = np.exp(matrix_scores)
+        return exp_scores / np.expand_dims(np.sum(exp_scores, axis=1), 1)
 
     def _compute_output_layer_delta(self, label, predicted):
         """
