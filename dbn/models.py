@@ -447,15 +447,10 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
         layer_idx = range(len(self.rbm_layers))
         layer_idx.reverse()
         delta_previous_layer = delta_output_layer
-        last_hidden_layer = True
         for layer in layer_idx:
             neuron_activations = layers_activation[layer]
             W = list_layer_weights[layer + 1]
-            if last_hidden_layer:
-                delta = np.dot(delta_previous_layer, W)
-                last_hidden_layer = False
-            else:
-                delta = np.dot(delta_previous_layer, W) * self._activation_function_class.prime(neuron_activations)
+            delta = np.dot(delta_previous_layer, W) * self._activation_function_class.prime(neuron_activations)
             deltas.append(delta)
             delta_previous_layer = delta
         deltas.reverse()
