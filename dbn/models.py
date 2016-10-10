@@ -128,7 +128,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         # Sampling
         for t in range(self.contrastive_divergence_iter):
             h_t = self._sample_hidden_units(v_t)
-            v_t = self._compute_visible_units(h_t)
+            v_t = self._sample_visible_units(h_t)
 
         # Computing deltas
         v_k = v_t
@@ -151,6 +151,21 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         output = np.zeros(hidden_units.shape)
         i = 0
         for hidden_unit in hidden_units:
+            output[i] = np.random.binomial(1, hidden_unit)
+            i += 1
+        return output
+
+    def _sample_visible_units(self, vector_hidden_units):
+        """
+        Computes visible unit activations by sampling from a binomial distribution.
+        :param vector_hidden_units: array-like, shape = (n_features, )
+        :return:
+        """
+        visible_units = self._compute_visible_units(vector_hidden_units)
+        visible_units[visible_units > 1] = 1.
+        output = np.zeros(visible_units.shape)
+        i = 0
+        for hidden_unit in visible_units:
             output[i] = np.random.binomial(1, hidden_unit)
             i += 1
         return output
@@ -234,7 +249,7 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
         self.rbm_layers = None
         self.verbose = verbose
 
-    def fit(self, X):
+    def fit(self, X, y=None):
         """
         Fits a model given data.
         :param X: array-like, shape = (n_samples, n_features)
@@ -315,7 +330,7 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
         self.batch_size = batch_size
         self.verbose = verbose
 
-    def fit(self, X, y):
+    def fit(self, X, y=None):
         """
         Fits a model given data.
         :param X: array-like, shape = (n_samples, n_features)
