@@ -1,8 +1,8 @@
 from abc import ABCMeta, abstractmethod
 
 import numpy as np
-
 from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin, RegressorMixin
+
 from .activations import SigmoidActivationFunction
 
 
@@ -377,12 +377,12 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
                 accum_delta_bias.append(np.zeros(self.b.shape))
                 batch_size = len(batch_data)
                 for sample, label in zip(batch_data, batch_labels):
-                    delta_W, delta_bias, probs = self._backpropagation(sample, label)
+                    delta_W, delta_bias, predicted = self._backpropagation(sample, label)
                     for layer in range(len(self.rbm_layers) + 1):
                         accum_delta_W[layer] += delta_W[layer]
                         accum_delta_bias[layer] += delta_bias[layer]
                     if self.verbose:
-                        loss = self._compute_loss(probs, label)
+                        loss = self._compute_loss(predicted, label)
                         matrix_error[i, :] = loss
                         i += 1
 
@@ -402,7 +402,7 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
 
             if self.verbose:
                 error = np.sum(matrix_error) / len(_data)
-                print ">> Epoch %d finished \tANN training softmax loss %f" % (iteration, error)
+                print ">> Epoch %d finished \tANN training loss %f" % (iteration, error)
 
     def _backpropagation(self, input_vector, label):
         """
@@ -454,8 +454,9 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
 
         return layer_gradient_weights, layer_gradient_bias, activation_output_layer
 
-    def _compute_loss(self, probs, label):
-        return -np.log(probs[np.where(label == 1)])
+    @abstractmethod
+    def _compute_loss(self, predicted, label):
+        return
 
     def _fine_tuning(self, data, _labels):
         """
@@ -604,6 +605,15 @@ class SupervisedDBNClassification(AbstractSupervisedDBN, ClassifierMixin):
         """
         return len(np.unique(labels))
 
+    def _compute_loss(self, probs, label):
+        """
+        Computes categorical cross-entropy loss
+        :param probs:
+        :param label:
+        :return:
+        """
+        return -np.log(probs[np.where(label == 1)])
+
 
 class SupervisedDBNRegression(AbstractSupervisedDBN, RegressorMixin):
     """
@@ -678,3 +688,13 @@ class SupervisedDBNRegression(AbstractSupervisedDBN, RegressorMixin):
             return 1
         else:
             return labels.shape[1]
+
+    def _compute_loss(self, predicted, label):
+        """
+        Computes Mean squared error loss.
+        :param predicted:
+        :param label:
+        :return:
+        """
+        error = predicted - label
+        return error * error
