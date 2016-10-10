@@ -42,7 +42,7 @@ class ReLUActivationFunction(ActivationFunction):
     @classmethod
     def function(cls, x):
         """
-        Noisy Rectified linear function.
+        Rectified linear function.
         :param x: array-like, shape = (n_features, )
         :return:
         """
@@ -51,7 +51,7 @@ class ReLUActivationFunction(ActivationFunction):
     @classmethod
     def prime(cls, x):
         """
-        Noisy Rectified linear first derivative.
+        Rectified linear first derivative.
         :param x: array-like, shape = (n_features, )
         :return:
         """
