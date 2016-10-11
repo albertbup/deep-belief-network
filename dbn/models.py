@@ -128,7 +128,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         # Sampling
         for t in range(self.contrastive_divergence_iter):
             h_t = self._sample_hidden_units(v_t)
-            v_t = self._sample_visible_units(h_t)
+            v_t = self._compute_visible_units(h_t)
 
         # Computing deltas
         v_k = v_t
