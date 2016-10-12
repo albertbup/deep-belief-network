@@ -330,14 +330,16 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
         self.batch_size = batch_size
         self.verbose = verbose
 
-    def fit(self, X, y=None):
+    def fit(self, X, y=None, pre_train=True):
         """
         Fits a model given data.
         :param X: array-like, shape = (n_samples, n_features)
         :param y : array-like, shape = (n_samples, )
+        :param pre_train: bool
         :return:
         """
-        super(AbstractSupervisedDBN, self).fit(X)
+        if pre_train:
+            self.pre_train(X)
         self._fine_tuning(X, y)
         return self
 
@@ -498,6 +500,14 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
         if self.verbose:
             print "[END] Fine tuning step"
 
+    def pre_train(self, X):
+        """
+        Apply unsupervised network pre-training.
+        :param X: array-like, shape = (n_samples, n_features)
+        :return:
+        """
+        return super(AbstractSupervisedDBN, self).fit(X)
+
     @abstractmethod
     def _transform_labels_to_network_format(self, labels):
         return
@@ -523,29 +533,6 @@ class SupervisedDBNClassification(AbstractSupervisedDBN, ClassifierMixin):
     """
     This class implements a Deep Belief Network for classification problems.
     """
-
-    def __init__(self,
-                 hidden_layers_structure=[100, 100],
-                 activation_function='sigmoid',
-                 optimization_algorithm='sgd',
-                 learning_rate_rbm=1e-3,
-                 learning_rate=1e-3,
-                 n_iter_backprop=100,
-                 l2_regularization=1.0,
-                 n_epochs_rbm=10,
-                 contrastive_divergence_iter=1,
-                 batch_size=32,
-                 verbose=True):
-        super(SupervisedDBNClassification, self).__init__(hidden_layers_structure=hidden_layers_structure,
-                                                          activation_function=activation_function,
-                                                          optimization_algorithm=optimization_algorithm,
-                                                          learning_rate_rbm=learning_rate_rbm,
-                                                          learning_rate=learning_rate,
-                                                          n_epochs_rbm=n_epochs_rbm,
-                                                          contrastive_divergence_iter=contrastive_divergence_iter,
-                                                          verbose=verbose, n_iter_backprop=n_iter_backprop,
-                                                          l2_regularization=l2_regularization,
-                                                          batch_size=batch_size)
 
     def _transform_labels_to_network_format(self, labels):
         """
@@ -634,30 +621,6 @@ class SupervisedDBNRegression(AbstractSupervisedDBN, RegressorMixin):
     """
     This class implements a Deep Belief Network for regression problems.
     """
-
-    def __init__(self,
-                 hidden_layers_structure=[100, 100],
-                 activation_function='sigmoid',
-                 optimization_algorithm='sgd',
-                 learning_rate_rbm=1e-3,
-                 learning_rate=1e-3,
-                 n_iter_backprop=100,
-                 l2_regularization=1.0,
-                 n_epochs_rbm=10,
-                 contrastive_divergence_iter=1,
-                 batch_size=32,
-                 verbose=True):
-        super(SupervisedDBNRegression, self).__init__(hidden_layers_structure=hidden_layers_structure,
-                                                      activation_function=activation_function,
-                                                      optimization_algorithm=optimization_algorithm,
-                                                      learning_rate_rbm=learning_rate_rbm,
-                                                      learning_rate=learning_rate,
-                                                      n_epochs_rbm=n_epochs_rbm,
-                                                      contrastive_divergence_iter=contrastive_divergence_iter,
-                                                      verbose=verbose,
-                                                      n_iter_backprop=n_iter_backprop,
-                                                      l2_regularization=l2_regularization,
-                                                      batch_size=batch_size)
 
     def _transform_labels_to_network_format(self, labels):
         """
