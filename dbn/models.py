@@ -147,13 +147,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         :return:
         """
         hidden_units = self._compute_hidden_units(vector_visible_units)
-        hidden_units[hidden_units > 1] = 1.
-        output = np.zeros(hidden_units.shape)
-        i = 0
-        for hidden_unit in hidden_units:
-            output[i] = np.random.binomial(1, hidden_unit)
-            i += 1
-        return output
+        return (np.random.random_sample(len(hidden_units)) < hidden_units).astype(np.int64)
 
     def _sample_visible_units(self, vector_hidden_units):
         """
@@ -162,13 +156,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         :return:
         """
         visible_units = self._compute_visible_units(vector_hidden_units)
-        visible_units[visible_units > 1] = 1.
-        output = np.zeros(visible_units.shape)
-        i = 0
-        for hidden_unit in visible_units:
-            output[i] = np.random.binomial(1, hidden_unit)
-            i += 1
-        return output
+        return (np.random.random_sample(len(visible_units)) < visible_units).astype(np.int64)
 
     def _compute_hidden_units(self, vector_visible_units):
         """
