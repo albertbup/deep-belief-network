@@ -24,7 +24,8 @@ classifier = SupervisedDBNClassification(hidden_layers_structure=[256, 256],
                                          n_iter_backprop=100,
                                          l2_regularization=0.0,
                                          batch_size=32,
-                                         activation_function='relu')
+                                         activation_function='relu',
+                                         dropout_p=0.2)
 classifier.fit(X_train, Y_train)
 
 # Test

@@ -303,6 +303,7 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
                  n_epochs_rbm=10,
                  contrastive_divergence_iter=1,
                  batch_size=32,
+                 dropout_p=0,  # float between 0 and 1. Fraction of the input units to drop
                  verbose=True):
         super(AbstractSupervisedDBN, self).__init__(hidden_layers_structure=hidden_layers_structure,
                                                     activation_function=activation_function,
@@ -316,6 +317,8 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
         self.l2_regularization = l2_regularization
         self.learning_rate = learning_rate
         self.batch_size = batch_size
+        self.dropout_p = dropout_p
+        self.p = 1 - self.dropout_p
         self.verbose = verbose
 
     def fit(self, X, y=None, pre_train=True):
@@ -351,10 +354,16 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
         :return:
         """
         input_data = sample
+        if self.dropout_p > 0:
+            r = np.random.binomial(1, self.p, len(input_data))
+            input_data *= r
         layers_activation = list()
 
         for rbm in self.rbm_layers:
             input_data = rbm.transform(input_data)
+            if self.dropout_p > 0:
+                r = np.random.binomial(1, self.p, len(input_data))
+                input_data *= r
             layers_activation.append(input_data)
 
         # Computing activation of output layer
@@ -477,6 +486,11 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
 
         labels = self._transform_labels_to_network_format(_labels)
 
+        # Scaling up weights obtained from pretraining
+        for rbm in self.rbm_layers:
+            rbm.W /= self.p
+            rbm.c /= self.p
+
         if self.verbose:
             print "[START] Fine tuning step:"
 
@@ -484,6 +498,11 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
             self._stochastic_gradient_descent(data, labels)
         else:
             raise ValueError("Invalid optimization algorithm.")
+
+        # Scaling down weights obtained from pretraining
+        for rbm in self.rbm_layers:
+            rbm.W *= self.p
+            rbm.c *= self.p
 
         if self.verbose:
             print "[END] Fine tuning step"
