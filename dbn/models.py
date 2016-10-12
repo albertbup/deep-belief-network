@@ -520,6 +520,7 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
 class SupervisedDBNClassification(AbstractSupervisedDBN, ClassifierMixin):
     """
     This class implements a Deep Belief Network for classification problems.
+    It appends a Softmax Linear Classifier as output layer.
     """
 
     def _transform_labels_to_network_format(self, labels):
