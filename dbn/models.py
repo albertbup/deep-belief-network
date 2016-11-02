@@ -2,6 +2,7 @@ from abc import ABCMeta, abstractmethod
 
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin, RegressorMixin
+from scipy.stats import truncnorm
 
 from .activations import SigmoidActivationFunction, ReLUActivationFunction
 
@@ -37,13 +38,16 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         """
         # Initialize RBM parameters
         self.n_visible_units = X.shape[1]
-        self.W = np.random.randn(self.n_hidden_units, self.n_visible_units) / np.sqrt(self.n_visible_units)
-        self.c = np.random.randn(self.n_hidden_units) / np.sqrt(self.n_visible_units)
-        self.b = np.random.randn(self.n_visible_units) / np.sqrt(self.n_visible_units)
-
         if self.activation_function == 'sigmoid':
+            self.W = np.random.randn(self.n_hidden_units, self.n_visible_units) / np.sqrt(self.n_visible_units)
+            self.c = np.random.randn(self.n_hidden_units) / np.sqrt(self.n_visible_units)
+            self.b = np.random.randn(self.n_visible_units) / np.sqrt(self.n_visible_units)
             self._activation_function_class = SigmoidActivationFunction
         elif self.activation_function == 'relu':
+            self.W = truncnorm.rvs(-0.2, 0.2, size=[self.n_hidden_units, self.n_visible_units]) / np.sqrt(
+                self.n_visible_units)
+            self.c = np.full(self.n_hidden_units, 0.1) / np.sqrt(self.n_visible_units)
+            self.b = np.full(self.n_visible_units, 0.1) / np.sqrt(self.n_visible_units)
             self._activation_function_class = ReLUActivationFunction
         else:
             raise ValueError("Invalid activation function.")
@@ -79,13 +83,16 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         :param _data: array-like, shape = (n_samples, n_features)
         :return:
         """
+        accum_delta_W = np.zeros(self.W.shape)
+        accum_delta_b = np.zeros(self.b.shape)
+        accum_delta_c = np.zeros(self.c.shape)
         for iteration in range(1, self.n_epochs + 1):
             idx = np.random.permutation(len(_data))
             data = _data[idx]
             for batch in self.get_batches(self.batch_size, data):
-                accum_delta_W = np.zeros(self.W.shape)
-                accum_delta_b = np.zeros(self.b.shape)
-                accum_delta_c = np.zeros(self.c.shape)
+                accum_delta_W[:] = .0
+                accum_delta_b[:] = .0
+                accum_delta_c[:] = .0
                 batch_size = len(batch)
                 for sample in batch:
                     delta_W, delta_b, delta_c = self._contrastive_divergence(sample)
@@ -123,7 +130,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         :return:
         """
         v_0 = vector_visible_units
-        v_t = np.copy(v_0)
+        v_t = np.array(v_0)
 
         # Sampling
         for t in range(self.contrastive_divergence_iter):
@@ -480,9 +487,14 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
         """
         self.num_classes = self._determine_num_output_neurons(_labels)
         n_hidden_units_previous_layer = self.rbm_layers[-1].n_hidden_units
-        self.W = np.random.randn(self.num_classes, n_hidden_units_previous_layer) / np.sqrt(
-            n_hidden_units_previous_layer)
-        self.b = np.random.randn(self.num_classes) / np.sqrt(n_hidden_units_previous_layer)
+        if self.activation_function == 'relu':
+            self.W = truncnorm.rvs(-0.2, 0.2, size=[self.num_classes, n_hidden_units_previous_layer]) / np.sqrt(
+                n_hidden_units_previous_layer)
+            self.b = np.full(self.num_classes, 0.1) / np.sqrt(n_hidden_units_previous_layer)
+        elif self.activation_function == 'sigmoid':
+            self.W = np.random.randn(self.num_classes, n_hidden_units_previous_layer) / np.sqrt(
+                n_hidden_units_previous_layer)
+            self.b = np.random.randn(self.num_classes) / np.sqrt(n_hidden_units_previous_layer)
 
         labels = self._transform_labels_to_network_format(_labels)
 
