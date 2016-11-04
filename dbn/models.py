@@ -389,6 +389,10 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
         if self.verbose:
             matrix_error = np.zeros([len(_data), self.num_classes])
         num_samples = len(_data)
+        accum_delta_W = [np.zeros(rbm.W.shape) for rbm in self.rbm_layers]
+        accum_delta_W.append(np.zeros(self.W.shape))
+        accum_delta_bias = [np.zeros(rbm.c.shape) for rbm in self.rbm_layers]
+        accum_delta_bias.append(np.zeros(self.b.shape))
 
         for iteration in range(1, self.n_iter_backprop + 1):
             idx = np.random.permutation(len(_data))
@@ -396,10 +400,9 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
             labels = _labels[idx]
             i = 0
             for batch_data, batch_labels in BinaryRBM.get_batches(self.batch_size, data, labels):
-                accum_delta_W = [np.zeros(rbm.W.shape) for rbm in self.rbm_layers]
-                accum_delta_W.append(np.zeros(self.W.shape))
-                accum_delta_bias = [np.zeros(rbm.c.shape) for rbm in self.rbm_layers]
-                accum_delta_bias.append(np.zeros(self.b.shape))
+                # Clear arrays
+                for arr1, arr2 in zip(accum_delta_W, accum_delta_bias):
+                    arr1[:], arr2[:] = .0, .0
                 batch_size = len(batch_data)
                 for sample, label in zip(batch_data, batch_labels):
                     delta_W, delta_bias, predicted = self._backpropagation(sample, label)
