@@ -243,6 +243,7 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
         self.batch_size = batch_size
         self.rbm_layers = None
         self.verbose = verbose
+        self.rbm_class = BinaryRBM
 
     def fit(self, X, y=None):
         """
@@ -250,24 +251,17 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
         :param X: array-like, shape = (n_samples, n_features)
         :return:
         """
-        if self.activation_function == 'sigmoid':
-            self._activation_function_class = SigmoidActivationFunction
-        elif self.activation_function == 'relu':
-            self._activation_function_class = ReLUActivationFunction
-        else:
-            raise ValueError("Invalid activation function.")
-
         # Initialize rbm layers
         self.rbm_layers = list()
         for n_hidden_units in self.hidden_layers_structure:
-            rbm = BinaryRBM(n_hidden_units=n_hidden_units,
-                            activation_function=self.activation_function,
-                            optimization_algorithm=self.optimization_algorithm,
-                            learning_rate=self.learning_rate_rbm,
-                            n_epochs=self.n_epochs_rbm,
-                            contrastive_divergence_iter=self.contrastive_divergence_iter,
-                            batch_size=self.batch_size,
-                            verbose=self.verbose)
+            rbm = self.rbm_class(n_hidden_units=n_hidden_units,
+                                 activation_function=self.activation_function,
+                                 optimization_algorithm=self.optimization_algorithm,
+                                 learning_rate=self.learning_rate_rbm,
+                                 n_epochs=self.n_epochs_rbm,
+                                 contrastive_divergence_iter=self.contrastive_divergence_iter,
+                                 batch_size=self.batch_size,
+                                 verbose=self.verbose)
             self.rbm_layers.append(rbm)
 
         # Fit RBM
@@ -459,7 +453,8 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
         for layer in layer_idx:
             neuron_activations = layers_activation[layer]
             W = list_layer_weights[layer + 1]
-            delta = np.dot(delta_previous_layer, W) * self._activation_function_class.prime(neuron_activations)
+            delta = np.dot(delta_previous_layer, W) * self.rbm_layers[layer]._activation_function_class.prime(
+                neuron_activations)
             deltas.append(delta)
             delta_previous_layer = delta
         deltas.reverse()
