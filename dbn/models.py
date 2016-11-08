@@ -114,7 +114,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         :param labels: array-like, shape = (n_samples, )
         :return:
         """
-        n_batches = int(np.ceil(len(data) / batch_size))
+        n_batches = int(np.round(len(data) / float(batch_size)))
         for i in range(n_batches):
             start = i * batch_size
             end = start + batch_size
@@ -171,8 +171,8 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         :param vector_visible_units: array-like, shape = (n_features, )
         :return:
         """
-        v = vector_visible_units
-        return self._activation_function_class.function(np.dot(self.W, v) + self.c)
+        v = np.expand_dims(vector_visible_units, 0)
+        return np.squeeze(self._compute_hidden_units_matrix(v))
 
     def _compute_hidden_units_matrix(self, matrix_visible_units):
         """
@@ -189,8 +189,8 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         :param vector_hidden_units: array-like, shape = (n_features, )
         :return:
         """
-        h = vector_hidden_units
-        return self._activation_function_class.function(np.dot(h, self.W) + self.b)
+        h = np.expand_dims(vector_hidden_units, 0)
+        return np.squeeze(self._compute_visible_units_matrix(h))
 
     def _compute_visible_units_matrix(self, matrix_hidden_units):
         """
