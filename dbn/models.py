@@ -220,7 +220,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         """
         data_transformed = self.transform(data)
         data_reconstructed = self._reconstruct(data_transformed)
-        return np.sum((data_reconstructed - data) ** 2)
+        return np.mean(np.sum((data_reconstructed - data) ** 2, 1))
 
 
 class UnsupervisedDBN(BaseEstimator, TransformerMixin):
