@@ -1,7 +1,6 @@
 import numpy as np
-import tensorflow as tf
 
-tf.set_random_seed(1337)  # for reproducibility
+np.random.seed(1337)  # for reproducibility
 from sklearn.datasets import load_digits
 from sklearn.cross_validation import train_test_split
 from sklearn.metrics.classification import accuracy_score
@@ -21,7 +20,7 @@ X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_
 
 # Training
 classifier = SupervisedDBNClassification(hidden_layers_structure=[256, 256],
-                                         learning_rate_rbm=0.03,
+                                         learning_rate_rbm=0.05,
                                          learning_rate=0.5,
                                          n_epochs_rbm=10,
                                          n_iter_backprop=100,
@@ -29,7 +28,7 @@ classifier = SupervisedDBNClassification(hidden_layers_structure=[256, 256],
                                          batch_size=32,
                                          activation_function='relu',
                                          dropout_p=0.2,
-                                         mode='tf')     # set 'np' for using numpy on CPU
+                                         mode='tf')  # set 'np' for using numpy on CPU
 classifier.fit(X_train, Y_train)
 
 # Test
