@@ -1,1 +1,1 @@
-from .models import BinaryRBM, UnsupervisedDBN
+from .models import BinaryRBM

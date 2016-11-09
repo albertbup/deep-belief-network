@@ -90,18 +90,21 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
             idx = np.random.permutation(len(_data))
             data = _data[idx]
             for batch in self.get_batches(self.batch_size, data):
+                if len(batch) < self.batch_size:
+                    # Pad with zeros
+                    pad = np.zeros((self.batch_size - batch.shape[0], batch.shape[1]), dtype=batch.dtype)
+                    batch = np.vstack((batch, pad))
                 accum_delta_W[:] = .0
                 accum_delta_b[:] = .0
                 accum_delta_c[:] = .0
-                batch_size = len(batch)
                 for sample in batch:
                     delta_W, delta_b, delta_c = self._contrastive_divergence(sample)
                     accum_delta_W += delta_W
                     accum_delta_b += delta_b
                     accum_delta_c += delta_c
-                self.W += self.learning_rate * (accum_delta_W / batch_size)
-                self.b += self.learning_rate * (accum_delta_b / batch_size)
-                self.c += self.learning_rate * (accum_delta_c / batch_size)
+                self.W += self.learning_rate * (accum_delta_W / self.batch_size)
+                self.b += self.learning_rate * (accum_delta_b / self.batch_size)
+                self.c += self.learning_rate * (accum_delta_c / self.batch_size)
             if self.verbose:
                 error = self._compute_reconstruction_error(data)
                 print ">> Epoch %d finished \tRBM Reconstruction error %f" % (iteration, error)
@@ -233,6 +236,7 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
                  n_epochs_rbm=10,
                  contrastive_divergence_iter=1,
                  batch_size=32,
+                 mode='np',
                  verbose=True):
         self.hidden_layers_structure = hidden_layers_structure
         self.activation_function = activation_function
@@ -243,7 +247,7 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
         self.batch_size = batch_size
         self.rbm_layers = None
         self.verbose = verbose
-        self.rbm_class = BinaryRBM
+        self.mode = mode
 
     def fit(self, X, y=None):
         """
@@ -253,15 +257,22 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
         """
         # Initialize rbm layers
         self.rbm_layers = list()
+        if self.mode == 'tf':
+            from .tensorflow import BinaryRBM as TFBinaryRBM
+            rbm_class = TFBinaryRBM
+        elif self.mode == 'np':
+            rbm_class = BinaryRBM
+        else:
+            raise ValueError('mode attribute can take values "np" or "tf"')
         for n_hidden_units in self.hidden_layers_structure:
-            rbm = self.rbm_class(n_hidden_units=n_hidden_units,
-                                 activation_function=self.activation_function,
-                                 optimization_algorithm=self.optimization_algorithm,
-                                 learning_rate=self.learning_rate_rbm,
-                                 n_epochs=self.n_epochs_rbm,
-                                 contrastive_divergence_iter=self.contrastive_divergence_iter,
-                                 batch_size=self.batch_size,
-                                 verbose=self.verbose)
+            rbm = rbm_class(n_hidden_units=n_hidden_units,
+                            activation_function=self.activation_function,
+                            optimization_algorithm=self.optimization_algorithm,
+                            learning_rate=self.learning_rate_rbm,
+                            n_epochs=self.n_epochs_rbm,
+                            contrastive_divergence_iter=self.contrastive_divergence_iter,
+                            batch_size=self.batch_size,
+                            verbose=self.verbose)
             self.rbm_layers.append(rbm)
 
         # Fit RBM
@@ -273,6 +284,32 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
             input_data = rbm.transform(input_data)
         if self.verbose:
             print "[END] Pre-training step"
+
+        # Changing RBM's instances to non-tensorflow version since last layer is not tf compatible yet.
+        # To be improved in the future.
+        if self.mode == 'tf':
+            from .tensorflow.models import sess
+            # Transform weights and bias in numpy arrays
+            for idx, n_hidden_units in enumerate(self.hidden_layers_structure):
+                rbm = BinaryRBM(n_hidden_units=n_hidden_units,
+                                activation_function=self.activation_function,
+                                optimization_algorithm=self.optimization_algorithm,
+                                learning_rate=self.learning_rate_rbm,
+                                n_epochs=self.n_epochs_rbm,
+                                contrastive_divergence_iter=self.contrastive_divergence_iter,
+                                batch_size=self.batch_size,
+                                verbose=self.verbose)
+                rbm_tf = self.rbm_layers[idx]
+                setattr(rbm, 'W', rbm_tf.W.eval(session=sess))
+                setattr(rbm, 'b', rbm_tf.b.eval(session=sess))
+                setattr(rbm, 'c', rbm_tf.c.eval(session=sess))
+                if self.activation_function == 'sigmoid':
+                    activation_function_class = SigmoidActivationFunction
+                elif self.activation_function == 'relu':
+                    activation_function_class = ReLUActivationFunction
+                setattr(rbm, '_activation_function_class', activation_function_class)
+                self.rbm_layers[idx] = rbm
+            sess.close()
         return self
 
     def transform(self, X):
@@ -305,7 +342,8 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
                  contrastive_divergence_iter=1,
                  batch_size=32,
                  dropout_p=0,  # float between 0 and 1. Fraction of the input units to drop
-                 verbose=True):
+                 verbose=True,
+                 mode='np'):
         super(AbstractSupervisedDBN, self).__init__(hidden_layers_structure=hidden_layers_structure,
                                                     activation_function=activation_function,
                                                     optimization_algorithm=optimization_algorithm,
@@ -313,7 +351,8 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
                                                     n_epochs_rbm=n_epochs_rbm,
                                                     contrastive_divergence_iter=contrastive_divergence_iter,
                                                     batch_size=batch_size,
-                                                    verbose=verbose)
+                                                    verbose=verbose,
+                                                    mode=mode)
         self.n_iter_backprop = n_iter_backprop
         self.l2_regularization = l2_regularization
         self.learning_rate = learning_rate
@@ -397,7 +436,6 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
                 # Clear arrays
                 for arr1, arr2 in zip(accum_delta_W, accum_delta_bias):
                     arr1[:], arr2[:] = .0, .0
-                batch_size = len(batch_data)
                 for sample, label in zip(batch_data, batch_labels):
                     delta_W, delta_bias, predicted = self._backpropagation(sample, label)
                     for layer in range(len(self.rbm_layers) + 1):
@@ -413,14 +451,14 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
                     # Updating parameters of hidden layers
                     rbm.W = (1 - (
                         self.learning_rate * self.l2_regularization) / num_samples) * rbm.W - self.learning_rate * (
-                        accum_delta_W[layer] / batch_size)
-                    rbm.c -= self.learning_rate * (accum_delta_bias[layer] / batch_size)
+                        accum_delta_W[layer] / self.batch_size)
+                    rbm.c -= self.learning_rate * (accum_delta_bias[layer] / self.batch_size)
                     layer += 1
                 # Updating parameters of output layer
                 self.W = (1 - (
                     self.learning_rate * self.l2_regularization) / num_samples) * self.W - self.learning_rate * (
-                    accum_delta_W[layer] / batch_size)
-                self.b -= self.learning_rate * (accum_delta_bias[layer] / batch_size)
+                    accum_delta_W[layer] / self.batch_size)
+                self.b -= self.learning_rate * (accum_delta_bias[layer] / self.batch_size)
 
             if self.verbose:
                 error = np.sum(matrix_error) / len(_data)
@@ -485,14 +523,9 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
         """
         self.num_classes = self._determine_num_output_neurons(_labels)
         n_hidden_units_previous_layer = self.rbm_layers[-1].n_hidden_units
-        if self.activation_function == 'relu':
-            self.W = truncnorm.rvs(-0.2, 0.2, size=[self.num_classes, n_hidden_units_previous_layer]) / np.sqrt(
-                n_hidden_units_previous_layer)
-            self.b = np.full(self.num_classes, 0.1) / np.sqrt(n_hidden_units_previous_layer)
-        elif self.activation_function == 'sigmoid':
-            self.W = np.random.randn(self.num_classes, n_hidden_units_previous_layer) / np.sqrt(
-                n_hidden_units_previous_layer)
-            self.b = np.random.randn(self.num_classes) / np.sqrt(n_hidden_units_previous_layer)
+        self.W = np.random.randn(self.num_classes, n_hidden_units_previous_layer) / np.sqrt(
+            n_hidden_units_previous_layer)
+        self.b = np.random.randn(self.num_classes) / np.sqrt(n_hidden_units_previous_layer)
 
         labels = self._transform_labels_to_network_format(_labels)
 

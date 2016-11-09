@@ -2,7 +2,6 @@ import numpy as np
 import tensorflow as tf
 
 from ..models import BinaryRBM as BaseBinaryRBM
-from ..models import UnsupervisedDBN as BaseUnsupervisedDBN
 
 sess = tf.Session()
 
@@ -38,9 +37,10 @@ class BinaryRBM(BaseBinaryRBM):
         """
         # weights and biases
         if self.activation_function == 'sigmoid':
-            self.W = tf.Variable(tf.random_normal([self.n_hidden_units, self.n_visible_units]))
-            self.c = tf.Variable(tf.random_normal([self.n_hidden_units]))
-            self.b = tf.Variable(tf.random_normal([self.n_visible_units]))
+            stddev = 1.0 / np.sqrt(self.n_visible_units)
+            self.W = tf.Variable(tf.random_normal([self.n_hidden_units, self.n_visible_units], stddev=stddev))
+            self.c = tf.Variable(tf.random_normal([self.n_hidden_units], stddev=stddev))
+            self.b = tf.Variable(tf.random_normal([self.n_visible_units], stddev=stddev))
             self._activation_function_class = tf.nn.sigmoid
         elif self.activation_function == 'relu':
             stddev = 0.1 / np.sqrt(self.n_visible_units)
@@ -129,13 +129,3 @@ class BinaryRBM(BaseBinaryRBM):
         """
         return sess.run(self.compute_visible_units_op,
                         feed_dict={self.hidden_units_placeholder: matrix_hidden_units})
-
-
-class UnsupervisedDBN(BaseUnsupervisedDBN):
-    """
-    This class implements a unsupervised Deep Belief Network in TensorFlow.
-    """
-
-    def __init__(self, **kwargs):
-        super(UnsupervisedDBN, self).__init__(**kwargs)
-        self.rbm_class = BinaryRBM
