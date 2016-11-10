@@ -46,6 +46,7 @@ Note only pre-training step is implemented in TensorFlow so far. To decide where
     print 'Done.\nAccuracy: %f' % accuracy_score(Y_test, Y_pred)
 
 ## Installation
-Open a terminal and type the following line:
+1. Install TensorFlow (if it isn't already) from https://www.tensorflow.org/
+2. Open a terminal and type the following line:
 
     pip install git+git://github.com/albertbup/deep-belief-network.git
