@@ -259,6 +259,7 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
         self.rbm_layers = list()
         if self.mode == 'tf':
             from .tensorflow import BinaryRBM as TFBinaryRBM
+
             rbm_class = TFBinaryRBM
         elif self.mode == 'np':
             rbm_class = BinaryRBM
@@ -288,7 +289,6 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
         # Changing RBM's instances to non-tensorflow version since last layer is not tf compatible yet.
         # To be improved in the future.
         if self.mode == 'tf':
-            from .tensorflow.models import sess
             # Transform weights and bias in numpy arrays
             for idx, n_hidden_units in enumerate(self.hidden_layers_structure):
                 rbm = BinaryRBM(n_hidden_units=n_hidden_units,
@@ -300,16 +300,16 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
                                 batch_size=self.batch_size,
                                 verbose=self.verbose)
                 rbm_tf = self.rbm_layers[idx]
-                setattr(rbm, 'W', rbm_tf.W.eval(session=sess))
-                setattr(rbm, 'b', rbm_tf.b.eval(session=sess))
-                setattr(rbm, 'c', rbm_tf.c.eval(session=sess))
+                setattr(rbm, 'W', rbm_tf.W.eval(session=rbm_tf.sess))
+                setattr(rbm, 'b', rbm_tf.b.eval(session=rbm_tf.sess))
+                setattr(rbm, 'c', rbm_tf.c.eval(session=rbm_tf.sess))
                 if self.activation_function == 'sigmoid':
                     activation_function_class = SigmoidActivationFunction
                 elif self.activation_function == 'relu':
                     activation_function_class = ReLUActivationFunction
                 setattr(rbm, '_activation_function_class', activation_function_class)
                 self.rbm_layers[idx] = rbm
-            sess.close()
+                rbm_tf.sess.close()
         return self
 
     def transform(self, X):
