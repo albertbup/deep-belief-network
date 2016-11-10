@@ -461,7 +461,7 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
                 self.b -= self.learning_rate * (accum_delta_bias[layer] / self.batch_size)
 
             if self.verbose:
-                error = np.sum(matrix_error) / len(_data)
+                error = np.mean(np.sum(matrix_error, 1))
                 print ">> Epoch %d finished \tANN training loss %f" % (iteration, error)
 
     def _backpropagation(self, input_vector, label):
