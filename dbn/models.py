@@ -290,13 +290,14 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
         return input_data
 
 
-class AbstractSupervisedDBN(UnsupervisedDBN):
+class AbstractSupervisedDBN:
     """
     Abstract class for supervised Deep Belief Network.
     """
     __metaclass__ = ABCMeta
 
     def __init__(self,
+                 unsupervised_dbn_class,
                  hidden_layers_structure=[100, 100],
                  activation_function='sigmoid',
                  optimization_algorithm='sgd',
@@ -309,14 +310,14 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
                  batch_size=32,
                  dropout_p=0,  # float between 0 and 1. Fraction of the input units to drop
                  verbose=True):
-        super(AbstractSupervisedDBN, self).__init__(hidden_layers_structure=hidden_layers_structure,
-                                                    activation_function=activation_function,
-                                                    optimization_algorithm=optimization_algorithm,
-                                                    learning_rate_rbm=learning_rate_rbm,
-                                                    n_epochs_rbm=n_epochs_rbm,
-                                                    contrastive_divergence_iter=contrastive_divergence_iter,
-                                                    batch_size=batch_size,
-                                                    verbose=verbose)
+        self.unsupervised_dbn = unsupervised_dbn_class(hidden_layers_structure=hidden_layers_structure,
+                                                       activation_function=activation_function,
+                                                       optimization_algorithm=optimization_algorithm,
+                                                       learning_rate_rbm=learning_rate_rbm,
+                                                       n_epochs_rbm=n_epochs_rbm,
+                                                       contrastive_divergence_iter=contrastive_divergence_iter,
+                                                       batch_size=batch_size,
+                                                       verbose=verbose)
         self.n_iter_backprop = n_iter_backprop
         self.l2_regularization = l2_regularization
         self.learning_rate = learning_rate
@@ -357,7 +358,11 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
         :param X: array-like, shape = (n_samples, n_features)
         :return:
         """
-        return super(AbstractSupervisedDBN, self).fit(X)
+        self.unsupervised_dbn.fit(X)
+        return self
+
+    def transform(self, *args):
+        return self.unsupervised_dbn.transform(*args)
 
     @abstractmethod
     def _transform_labels_to_network_format(self, labels):
@@ -390,6 +395,9 @@ class NumPyAbstractSupervisedDBN(AbstractSupervisedDBN):
     """
     __metaclass__ = ABCMeta
 
+    def __init__(self, **kwargs):
+        super(NumPyAbstractSupervisedDBN, self).__init__(UnsupervisedDBN, **kwargs)
+
     def _compute_activations(self, sample):
         """
         Compute output values of all layers.
@@ -402,7 +410,7 @@ class NumPyAbstractSupervisedDBN(AbstractSupervisedDBN):
             input_data *= r
         layers_activation = list()
 
-        for rbm in self.rbm_layers:
+        for rbm in self.unsupervised_dbn.rbm_layers:
             input_data = rbm.transform(input_data)
             if self.dropout_p > 0:
                 r = np.random.binomial(1, self.p, len(input_data))
@@ -425,9 +433,9 @@ class NumPyAbstractSupervisedDBN(AbstractSupervisedDBN):
         if self.verbose:
             matrix_error = np.zeros([len(_data), self.num_classes])
         num_samples = len(_data)
-        accum_delta_W = [np.zeros(rbm.W.shape) for rbm in self.rbm_layers]
+        accum_delta_W = [np.zeros(rbm.W.shape) for rbm in self.unsupervised_dbn.rbm_layers]
         accum_delta_W.append(np.zeros(self.W.shape))
-        accum_delta_bias = [np.zeros(rbm.c.shape) for rbm in self.rbm_layers]
+        accum_delta_bias = [np.zeros(rbm.c.shape) for rbm in self.unsupervised_dbn.rbm_layers]
         accum_delta_bias.append(np.zeros(self.b.shape))
 
         for iteration in range(1, self.n_iter_backprop + 1):
@@ -441,7 +449,7 @@ class NumPyAbstractSupervisedDBN(AbstractSupervisedDBN):
                     arr1[:], arr2[:] = .0, .0
                 for sample, label in zip(batch_data, batch_labels):
                     delta_W, delta_bias, predicted = self._backpropagation(sample, label)
-                    for layer in range(len(self.rbm_layers) + 1):
+                    for layer in range(len(self.unsupervised_dbn.rbm_layers) + 1):
                         accum_delta_W[layer] += delta_W[layer]
                         accum_delta_bias[layer] += delta_bias[layer]
                     if self.verbose:
@@ -450,7 +458,7 @@ class NumPyAbstractSupervisedDBN(AbstractSupervisedDBN):
                         i += 1
 
                 layer = 0
-                for rbm in self.rbm_layers:
+                for rbm in self.unsupervised_dbn.rbm_layers:
                     # Updating parameters of hidden layers
                     rbm.W = (1 - (
                         self.learning_rate * self.l2_regularization) / num_samples) * rbm.W - self.learning_rate * (
@@ -477,7 +485,7 @@ class NumPyAbstractSupervisedDBN(AbstractSupervisedDBN):
         x, y = input_vector, label
         deltas = list()
         list_layer_weights = list()
-        for rbm in self.rbm_layers:
+        for rbm in self.unsupervised_dbn.rbm_layers:
             list_layer_weights.append(rbm.W)
         list_layer_weights.append(self.W)
 
@@ -488,14 +496,14 @@ class NumPyAbstractSupervisedDBN(AbstractSupervisedDBN):
         activation_output_layer = layers_activation[-1]
         delta_output_layer = self._compute_output_layer_delta(y, activation_output_layer)
         deltas.append(delta_output_layer)
-        layer_idx = range(len(self.rbm_layers))
+        layer_idx = range(len(self.unsupervised_dbn.rbm_layers))
         layer_idx.reverse()
         delta_previous_layer = delta_output_layer
         for layer in layer_idx:
             neuron_activations = layers_activation[layer]
             W = list_layer_weights[layer + 1]
-            delta = np.dot(delta_previous_layer, W) * self.rbm_layers[layer]._activation_function_class.prime(
-                neuron_activations)
+            delta = np.dot(delta_previous_layer, W) * self.unsupervised_dbn.rbm_layers[
+                layer]._activation_function_class.prime(neuron_activations)
             deltas.append(delta)
             delta_previous_layer = delta
         deltas.reverse()
@@ -521,7 +529,7 @@ class NumPyAbstractSupervisedDBN(AbstractSupervisedDBN):
         :return:
         """
         self.num_classes = self._determine_num_output_neurons(_labels)
-        n_hidden_units_previous_layer = self.rbm_layers[-1].n_hidden_units
+        n_hidden_units_previous_layer = self.unsupervised_dbn.rbm_layers[-1].n_hidden_units
         self.W = np.random.randn(self.num_classes, n_hidden_units_previous_layer) / np.sqrt(
             n_hidden_units_previous_layer)
         self.b = np.random.randn(self.num_classes) / np.sqrt(n_hidden_units_previous_layer)
@@ -529,20 +537,20 @@ class NumPyAbstractSupervisedDBN(AbstractSupervisedDBN):
         labels = self._transform_labels_to_network_format(_labels)
 
         # Scaling up weights obtained from pretraining
-        for rbm in self.rbm_layers:
+        for rbm in self.unsupervised_dbn.rbm_layers:
             rbm.W /= self.p
             rbm.c /= self.p
 
         if self.verbose:
             print "[START] Fine tuning step:"
 
-        if self.optimization_algorithm == 'sgd':
+        if self.unsupervised_dbn.optimization_algorithm == 'sgd':
             self._stochastic_gradient_descent(data, labels)
         else:
             raise ValueError("Invalid optimization algorithm.")
 
         # Scaling down weights obtained from pretraining
-        for rbm in self.rbm_layers:
+        for rbm in self.unsupervised_dbn.rbm_layers:
             rbm.W *= self.p
             rbm.c *= self.p
 
