@@ -236,7 +236,6 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
                  n_epochs_rbm=10,
                  contrastive_divergence_iter=1,
                  batch_size=32,
-                 mode='np',
                  verbose=True):
         self.hidden_layers_structure = hidden_layers_structure
         self.activation_function = activation_function
@@ -247,7 +246,7 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
         self.batch_size = batch_size
         self.rbm_layers = None
         self.verbose = verbose
-        self.mode = mode
+        self.rbm_class = BinaryRBM
 
     def fit(self, X, y=None):
         """
@@ -257,23 +256,15 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
         """
         # Initialize rbm layers
         self.rbm_layers = list()
-        if self.mode == 'tf':
-            from .tensorflow import BinaryRBM as TFBinaryRBM
-
-            rbm_class = TFBinaryRBM
-        elif self.mode == 'np':
-            rbm_class = BinaryRBM
-        else:
-            raise ValueError('mode attribute can take values "np" or "tf"')
         for n_hidden_units in self.hidden_layers_structure:
-            rbm = rbm_class(n_hidden_units=n_hidden_units,
-                            activation_function=self.activation_function,
-                            optimization_algorithm=self.optimization_algorithm,
-                            learning_rate=self.learning_rate_rbm,
-                            n_epochs=self.n_epochs_rbm,
-                            contrastive_divergence_iter=self.contrastive_divergence_iter,
-                            batch_size=self.batch_size,
-                            verbose=self.verbose)
+            rbm = self.rbm_class(n_hidden_units=n_hidden_units,
+                                 activation_function=self.activation_function,
+                                 optimization_algorithm=self.optimization_algorithm,
+                                 learning_rate=self.learning_rate_rbm,
+                                 n_epochs=self.n_epochs_rbm,
+                                 contrastive_divergence_iter=self.contrastive_divergence_iter,
+                                 batch_size=self.batch_size,
+                                 verbose=self.verbose)
             self.rbm_layers.append(rbm)
 
         # Fit RBM
@@ -285,31 +276,6 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
             input_data = rbm.transform(input_data)
         if self.verbose:
             print "[END] Pre-training step"
-
-        # Changing RBM's instances to non-tensorflow version since last layer is not tf compatible yet.
-        # To be improved in the future.
-        if self.mode == 'tf':
-            # Transform weights and bias in numpy arrays
-            for idx, n_hidden_units in enumerate(self.hidden_layers_structure):
-                rbm = BinaryRBM(n_hidden_units=n_hidden_units,
-                                activation_function=self.activation_function,
-                                optimization_algorithm=self.optimization_algorithm,
-                                learning_rate=self.learning_rate_rbm,
-                                n_epochs=self.n_epochs_rbm,
-                                contrastive_divergence_iter=self.contrastive_divergence_iter,
-                                batch_size=self.batch_size,
-                                verbose=self.verbose)
-                rbm_tf = self.rbm_layers[idx]
-                setattr(rbm, 'W', rbm_tf.W.eval(session=rbm_tf.sess))
-                setattr(rbm, 'b', rbm_tf.b.eval(session=rbm_tf.sess))
-                setattr(rbm, 'c', rbm_tf.c.eval(session=rbm_tf.sess))
-                if self.activation_function == 'sigmoid':
-                    activation_function_class = SigmoidActivationFunction
-                elif self.activation_function == 'relu':
-                    activation_function_class = ReLUActivationFunction
-                setattr(rbm, '_activation_function_class', activation_function_class)
-                self.rbm_layers[idx] = rbm
-                rbm_tf.sess.close()
         return self
 
     def transform(self, X):
@@ -351,8 +317,7 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
                                                     n_epochs_rbm=n_epochs_rbm,
                                                     contrastive_divergence_iter=contrastive_divergence_iter,
                                                     batch_size=batch_size,
-                                                    verbose=verbose,
-                                                    mode=mode)
+                                                    verbose=verbose)
         self.n_iter_backprop = n_iter_backprop
         self.l2_regularization = l2_regularization
         self.learning_rate = learning_rate
@@ -386,6 +351,45 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
             return self._compute_output_units(sample)
         predicted_data = self._compute_output_units_matrix(transformed_data)
         return predicted_data
+
+    def pre_train(self, X):
+        """
+        Apply unsupervised network pre-training.
+        :param X: array-like, shape = (n_samples, n_features)
+        :return:
+        """
+        return super(AbstractSupervisedDBN, self).fit(X)
+
+    @abstractmethod
+    def _transform_labels_to_network_format(self, labels):
+        return
+
+    @abstractmethod
+    def _compute_output_units(self, vector_visible_units):
+        return
+
+    @abstractmethod
+    def _compute_output_units_matrix(self, matrix_visible_units):
+        return
+
+    @abstractmethod
+    def _determine_num_output_neurons(self, labels):
+        return
+
+    @abstractmethod
+    def _stochastic_gradient_descent(self, data, labels):
+        return
+
+    @abstractmethod
+    def _fine_tuning(self, data, _labels):
+        return
+
+
+class NumPyAbstractSupervisedDBN(AbstractSupervisedDBN):
+    """
+    Abstract class for supervised Deep Belief Network in NumPy
+    """
+    __metaclass__ = ABCMeta
 
     def _compute_activations(self, sample):
         """
@@ -510,10 +514,6 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
 
         return layer_gradient_weights, layer_gradient_bias, activation_output_layer
 
-    @abstractmethod
-    def _compute_loss(self, predicted, label):
-        return
-
     def _fine_tuning(self, data, _labels):
         """
         Entry point of the fine tuning procedure.
@@ -550,36 +550,16 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
         if self.verbose:
             print "[END] Fine tuning step"
 
-    def pre_train(self, X):
-        """
-        Apply unsupervised network pre-training.
-        :param X: array-like, shape = (n_samples, n_features)
-        :return:
-        """
-        return super(AbstractSupervisedDBN, self).fit(X)
-
     @abstractmethod
-    def _transform_labels_to_network_format(self, labels):
-        return
-
-    @abstractmethod
-    def _compute_output_units(self, vector_visible_units):
-        return
-
-    @abstractmethod
-    def _compute_output_units_matrix(self, matrix_visible_units):
+    def _compute_loss(self, predicted, label):
         return
 
     @abstractmethod
     def _compute_output_layer_delta(self, label, predicted):
         return
 
-    @abstractmethod
-    def _determine_num_output_neurons(self, labels):
-        return
 
-
-class SupervisedDBNClassification(AbstractSupervisedDBN, ClassifierMixin):
+class SupervisedDBNClassification(NumPyAbstractSupervisedDBN, ClassifierMixin):
     """
     This class implements a Deep Belief Network for classification problems.
     It appends a Softmax Linear Classifier as output layer.
@@ -668,7 +648,7 @@ class SupervisedDBNClassification(AbstractSupervisedDBN, ClassifierMixin):
         return -np.log(probs[np.where(label == 1)])
 
 
-class SupervisedDBNRegression(AbstractSupervisedDBN, RegressorMixin):
+class SupervisedDBNRegression(NumPyAbstractSupervisedDBN, RegressorMixin):
     """
     This class implements a Deep Belief Network for regression problems.
     """
