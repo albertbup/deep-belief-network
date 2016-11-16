@@ -178,13 +178,21 @@ class TensorFlowAbstractSupervisedDBN(BaseAbstractSupervisedDBN):
         super(TensorFlowAbstractSupervisedDBN, self).__init__(UnsupervisedDBN, **kwargs)
 
     def _build_model(self):
+        self.visible_units_placeholder = self.unsupervised_dbn.rbm_layers[0].visible_units_placeholder
+        keep_prob = tf.placeholder(tf.float32)
+        visible_units_placeholder_drop = tf.nn.dropout(self.visible_units_placeholder, keep_prob)
+        self.keep_prob_placeholders = [keep_prob]
+
         # Define tensorflow operation for a forward pass
-        rbm_activation = self.unsupervised_dbn.rbm_layers[0].compute_hidden_units_op
-        for rbm in self.unsupervised_dbn.rbm_layers[1:]:
+        rbm_activation = visible_units_placeholder_drop
+        for rbm in self.unsupervised_dbn.rbm_layers:
             rbm_activation = rbm._activation_function_class(
                 tf.transpose(tf.matmul(rbm.W, tf.transpose(rbm_activation))) + rbm.c)
+            keep_prob = tf.placeholder(tf.float32)
+            self.keep_prob_placeholders.append(keep_prob)
+            rbm_activation = tf.nn.dropout(rbm_activation, keep_prob)
+
         self.transform_op = rbm_activation
-        self.visible_units_placeholder = self.unsupervised_dbn.rbm_layers[0].visible_units_placeholder
         input_units = self.unsupervised_dbn.rbm_layers[-1].n_hidden_units
 
         # weights and biases
@@ -230,18 +238,22 @@ class TensorFlowAbstractSupervisedDBN(BaseAbstractSupervisedDBN):
     def _stochastic_gradient_descent(self, data, labels):
         for iteration in range(self.n_iter_backprop):
             for batch_data, batch_labels in batch_generator(self.batch_size, data, labels):
-                sess.run(self.train_step,
-                         feed_dict={self.visible_units_placeholder: batch_data,
-                                    self.y_: batch_labels})
+                feed_dict = {self.visible_units_placeholder: batch_data,
+                             self.y_: batch_labels}
+                feed_dict.update({placeholder: self.p for placeholder in self.keep_prob_placeholders})
+                sess.run(self.train_step, feed_dict=feed_dict)
 
             if self.verbose:
-                error = sess.run(self.cost_function, feed_dict={self.visible_units_placeholder: data,
-                                                                self.y_: labels})
+                feed_dict = {self.visible_units_placeholder: data, self.y_: labels}
+                feed_dict.update({placeholder: 1.0 for placeholder in self.keep_prob_placeholders})
+                error = sess.run(self.cost_function, feed_dict=feed_dict)
                 print ">> Epoch %d finished \tANN training loss %f" % (iteration, error)
 
     def transform(self, X):
+        feed_dict = {self.visible_units_placeholder: X}
+        feed_dict.update({placeholder: 1.0 for placeholder in self.keep_prob_placeholders})
         return sess.run(self.transform_op,
-                        feed_dict={self.visible_units_placeholder: X})
+                        feed_dict=feed_dict)
 
     def predict(self, X):
         """
@@ -283,10 +295,15 @@ class SupervisedDBNClassification(TensorFlowAbstractSupervisedDBN, ClassifierMix
         return map(lambda idx: self.idx_to_label_map[idx], indexes)
 
     def _compute_output_units(self, vector_visible_units):
+        # TODO Call to _compute_output_units_matrix properly
         return
 
     def _compute_output_units_matrix(self, matrix_visible_units):
-        predicted_categorical = sess.run(self.output, feed_dict={self.visible_units_placeholder: matrix_visible_units})
+        feed_dict = {self.visible_units_placeholder: matrix_visible_units}
+        feed_dict.update({placeholder: 1.0 for placeholder in self.keep_prob_placeholders})
+
+        predicted_categorical = sess.run(self.output,
+                                         feed_dict=feed_dict)
         indexes = np.argmax(predicted_categorical, axis=1)
         return self._transform_network_format_to_labels(indexes)
 
