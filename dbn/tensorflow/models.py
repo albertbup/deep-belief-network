@@ -1,7 +1,17 @@
+import atexit
+
 import numpy as np
 import tensorflow as tf
 
 from ..models import BinaryRBM as BaseBinaryRBM
+
+
+def close_session():
+    sess.close()
+
+
+sess = tf.Session()
+atexit.register(close_session)
 
 
 class BinaryRBM(BaseBinaryRBM):
@@ -20,8 +30,7 @@ class BinaryRBM(BaseBinaryRBM):
         # Initialize RBM parameters
         self._build_model()
 
-        self.sess = tf.Session()
-        self.sess.run(tf.initialize_all_variables())
+        sess.run(tf.initialize_all_variables())
 
         if self.optimization_algorithm == 'sgd':
             self._stochastic_gradient_descent(X)
@@ -103,10 +112,10 @@ class BinaryRBM(BaseBinaryRBM):
                     # Pad with zeros
                     pad = np.zeros((self.batch_size - batch.shape[0], batch.shape[1]), dtype=batch.dtype)
                     batch = np.vstack((batch, pad))
-                self.sess.run(tf.initialize_variables(
+                sess.run(tf.initialize_variables(
                     [self.random_uniform_values]))  # Need to re-sample from uniform distribution
-                self.sess.run([self.update_W, self.update_b, self.update_c],
-                              feed_dict={self.visible_units_placeholder: batch})
+                sess.run([self.update_W, self.update_b, self.update_c],
+                         feed_dict={self.visible_units_placeholder: batch})
             if self.verbose:
                 error = self._compute_reconstruction_error(data)
                 print ">> Epoch %d finished \tRBM Reconstruction error %f" % (iteration, error)
@@ -117,8 +126,8 @@ class BinaryRBM(BaseBinaryRBM):
         :param matrix_visible_units: array-like, shape = (n_samples, n_features)
         :return:
         """
-        return self.sess.run(self.compute_hidden_units_op,
-                             feed_dict={self.visible_units_placeholder: matrix_visible_units})
+        return sess.run(self.compute_hidden_units_op,
+                        feed_dict={self.visible_units_placeholder: matrix_visible_units})
 
     def _compute_visible_units_matrix(self, matrix_hidden_units):
         """
@@ -126,5 +135,5 @@ class BinaryRBM(BaseBinaryRBM):
         :param matrix_hidden_units: array-like, shape = (n_samples, n_features)
         :return:
         """
-        return self.sess.run(self.compute_visible_units_op,
-                             feed_dict={self.hidden_units_placeholder: matrix_hidden_units})
+        return sess.run(self.compute_visible_units_op,
+                        feed_dict={self.hidden_units_placeholder: matrix_hidden_units})
