@@ -308,8 +308,7 @@ class AbstractSupervisedDBN(UnsupervisedDBN):
                  contrastive_divergence_iter=1,
                  batch_size=32,
                  dropout_p=0,  # float between 0 and 1. Fraction of the input units to drop
-                 verbose=True,
-                 mode='np'):
+                 verbose=True):
         super(AbstractSupervisedDBN, self).__init__(hidden_layers_structure=hidden_layers_structure,
                                                     activation_function=activation_function,
                                                     optimization_algorithm=optimization_algorithm,
