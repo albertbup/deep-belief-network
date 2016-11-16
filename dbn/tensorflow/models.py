@@ -1,9 +1,15 @@
 import atexit
+from abc import ABCMeta
 
 import numpy as np
 import tensorflow as tf
 
+from sklearn.base import ClassifierMixin
+
 from ..models import BinaryRBM as BaseBinaryRBM
+from ..models import UnsupervisedDBN as BaseUnsupervisedDBN
+from ..models import AbstractSupervisedDBN as BaseAbstractSupervisedDBN
+from ..utils import batch_generator, to_categorical
 
 
 def close_session():
@@ -30,7 +36,7 @@ class BinaryRBM(BaseBinaryRBM):
         # Initialize RBM parameters
         self._build_model()
 
-        sess.run(tf.initialize_all_variables())
+        sess.run(tf.initialize_variables([self.W, self.c, self.b]))
 
         if self.optimization_algorithm == 'sgd':
             self._stochastic_gradient_descent(X)
@@ -69,6 +75,7 @@ class BinaryRBM(BaseBinaryRBM):
             tf.matmul(self.hidden_units_placeholder, self.W) + self.b)
         self.random_uniform_values = tf.Variable(tf.random_uniform([self.batch_size, self.n_hidden_units]))
         sample_hidden_units_op = tf.to_float(self.random_uniform_values < self.compute_hidden_units_op)
+        self.random_variables = [self.random_uniform_values]
 
         # Positive gradient
         # Outer product. N is the batch size length.
@@ -84,8 +91,9 @@ class BinaryRBM(BaseBinaryRBM):
                 tf.matmul(sample_hidden_units_gibbs_step_op, self.W) + self.b)
             compute_hidden_units_gibbs_step_op = self._activation_function_class(
                 tf.transpose(tf.matmul(self.W, tf.transpose(compute_visible_units_op))) + self.c)
-            sample_hidden_units_gibbs_step_op = tf.to_float(tf.Variable(
-                tf.random_uniform([self.batch_size, self.n_hidden_units])) < compute_hidden_units_gibbs_step_op)
+            random_uniform_values = tf.Variable(tf.random_uniform([self.batch_size, self.n_hidden_units]))
+            sample_hidden_units_gibbs_step_op = tf.to_float(random_uniform_values < compute_hidden_units_gibbs_step_op)
+            self.random_variables.append(random_uniform_values)
 
         negative_gradient_op = tf.batch_matmul(tf.expand_dims(sample_hidden_units_gibbs_step_op, 2),  # [N, U, 1]
                                                tf.expand_dims(compute_visible_units_op, 1))  # [N, 1, V]
@@ -107,13 +115,12 @@ class BinaryRBM(BaseBinaryRBM):
         for iteration in range(1, self.n_epochs + 1):
             idx = np.random.permutation(len(_data))
             data = _data[idx]
-            for batch in self.get_batches(self.batch_size, data):
+            for batch in batch_generator(self.batch_size, data):
                 if len(batch) < self.batch_size:
                     # Pad with zeros
                     pad = np.zeros((self.batch_size - batch.shape[0], batch.shape[1]), dtype=batch.dtype)
                     batch = np.vstack((batch, pad))
-                sess.run(tf.initialize_variables(
-                    [self.random_uniform_values]))  # Need to re-sample from uniform distribution
+                sess.run(tf.initialize_variables(self.random_variables))  # Need to re-sample from uniform distribution
                 sess.run([self.update_W, self.update_b, self.update_c],
                          feed_dict={self.visible_units_placeholder: batch})
             if self.verbose:
@@ -137,3 +144,151 @@ class BinaryRBM(BaseBinaryRBM):
         """
         return sess.run(self.compute_visible_units_op,
                         feed_dict={self.hidden_units_placeholder: matrix_hidden_units})
+
+
+class UnsupervisedDBN(BaseUnsupervisedDBN):
+    """
+    This class implements a unsupervised Deep Belief Network in TensorFlow
+    """
+
+    def __init__(self, **kwargs):
+        super(UnsupervisedDBN, self).__init__(**kwargs)
+        self.rbm_class = BinaryRBM
+        #
+        # def fit(self, *args, **kwargs):
+        #     super(UnsupervisedDBN, self).fit(*args, **kwargs)
+        #
+        #     # Define tensorflow operation for a forward pass
+        #     rbm_activation = self.rbm_layers[0].compute_hidden_units_op
+        #     for rbm in self.rbm_layers[1:]:
+        #         rbm_activation = rbm._activation_function_class(
+        #             tf.transpose(tf.matmul(rbm.W, tf.transpose(rbm_activation))) + rbm.c)
+        #     self.transform_op = rbm_activation
+        #     self.visible_units_placeholder = self.rbm_layers[0].visible_units_placeholder
+
+        # def transform(self, X):
+        #     return sess.run(self.transform_op,
+        #                     feed_dict={self.visible_units_placeholder: X})
+
+
+class TensorFlowAbstractSupervisedDBN(BaseAbstractSupervisedDBN):
+    __metaclass__ = ABCMeta
+
+    def __init__(self, **kwargs):
+        super(TensorFlowAbstractSupervisedDBN, self).__init__(UnsupervisedDBN, **kwargs)
+
+    def _build_model(self):
+        # Define tensorflow operation for a forward pass
+        rbm_activation = self.unsupervised_dbn.rbm_layers[0].compute_hidden_units_op
+        for rbm in self.unsupervised_dbn.rbm_layers[1:]:
+            rbm_activation = rbm._activation_function_class(
+                tf.transpose(tf.matmul(rbm.W, tf.transpose(rbm_activation))) + rbm.c)
+        self.transform_op = rbm_activation
+        self.visible_units_placeholder = self.unsupervised_dbn.rbm_layers[0].visible_units_placeholder
+        input_units = self.unsupervised_dbn.rbm_layers[-1].n_hidden_units
+
+        # weights and biases
+        if self.unsupervised_dbn.activation_function == 'sigmoid':
+            stddev = 1.0 / np.sqrt(input_units)
+            self.W = tf.Variable(tf.random_normal([input_units, self.num_classes], stddev=stddev))
+            self.b = tf.Variable(tf.random_normal([self.num_classes], stddev=stddev))
+            self._activation_function_class = tf.nn.sigmoid
+        elif self.unsupervised_dbn.activation_function == 'relu':
+            stddev = 0.1 / np.sqrt(input_units)
+            self.W = tf.Variable(
+                tf.truncated_normal([input_units, self.num_classes], stddev=stddev, dtype=tf.float32))
+            self.b = tf.Variable(tf.constant(stddev, shape=[self.num_classes], dtype=tf.float32))
+            self._activation_function_class = tf.nn.relu
+        else:
+            raise ValueError("Invalid activation function.")
+
+        if self.unsupervised_dbn.optimization_algorithm == 'sgd':
+            self.optimizer = tf.train.GradientDescentOptimizer(self.learning_rate)
+        else:
+            raise ValueError("Invalid optimization algorithm.")
+
+        # operations
+        self.y = tf.matmul(self.transform_op, self.W) + self.b
+        self.y_ = tf.placeholder(tf.float32, shape=[None, self.num_classes])
+        self.train_step = None
+        self.cost_function = None
+
+    def _fine_tuning(self, data, _labels):
+        self.num_classes = self._determine_num_output_neurons(_labels)
+
+        self._build_model()
+        sess.run(tf.initialize_variables([self.W, self.b]))
+
+        labels = self._transform_labels_to_network_format(_labels)
+
+        if self.verbose:
+            print "[START] Fine tuning step:"
+        self._stochastic_gradient_descent(data, labels)
+        if self.verbose:
+            print "[END] Fine tuning step"
+
+    def _stochastic_gradient_descent(self, data, labels):
+        for iteration in range(self.n_iter_backprop):
+            for batch_data, batch_labels in batch_generator(self.batch_size, data, labels):
+                sess.run(self.train_step,
+                         feed_dict={self.visible_units_placeholder: batch_data,
+                                    self.y_: batch_labels})
+
+            if self.verbose:
+                error = sess.run(self.cost_function, feed_dict={self.visible_units_placeholder: data,
+                                                                self.y_: labels})
+                print ">> Epoch %d finished \tANN training loss %f" % (iteration, error)
+
+    def transform(self, X):
+        return sess.run(self.transform_op,
+                        feed_dict={self.visible_units_placeholder: X})
+
+    def predict(self, X):
+        """
+        Predicts the target given data.
+        :param X: array-like, shape = (n_samples, n_features)
+        :return:
+        """
+        if len(X.shape) == 1:  # It is a single sample
+            sample = X
+            return self._compute_output_units(sample)
+        predicted_data = self._compute_output_units_matrix(X)
+        return predicted_data
+
+
+class SupervisedDBNClassification(TensorFlowAbstractSupervisedDBN, ClassifierMixin):
+    """
+    This class implements a Deep Belief Network for classification problems.
+    It appends a Softmax Linear Classifier as output layer.
+    """
+
+    def _build_model(self):
+        super(SupervisedDBNClassification, self)._build_model()
+        self.output = tf.nn.softmax(self.y)
+        self.cost_function = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(self.y, self.y_))
+        self.train_step = self.optimizer.minimize(self.cost_function)
+
+    def _transform_labels_to_network_format(self, labels):
+        new_labels, label_to_idx_map, idx_to_label_map = to_categorical(labels, self.num_classes)
+        self.label_to_idx_map = label_to_idx_map
+        self.idx_to_label_map = idx_to_label_map
+        return new_labels
+
+    def _transform_network_format_to_labels(self, indexes):
+        """
+        Converts network output to original labels.
+        :param indexes: array-like, shape = (n_samples, )
+        :return:
+        """
+        return map(lambda idx: self.idx_to_label_map[idx], indexes)
+
+    def _compute_output_units(self, vector_visible_units):
+        return
+
+    def _compute_output_units_matrix(self, matrix_visible_units):
+        predicted_categorical = sess.run(self.output, feed_dict={self.visible_units_placeholder: matrix_visible_units})
+        indexes = np.argmax(predicted_categorical, axis=1)
+        return self._transform_network_format_to_labels(indexes)
+
+    def _determine_num_output_neurons(self, labels):
+        return len(np.unique(labels))

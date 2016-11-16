@@ -5,6 +5,7 @@ from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin, Regre
 from scipy.stats import truncnorm
 
 from .activations import SigmoidActivationFunction, ReLUActivationFunction
+from .utils import batch_generator
 
 
 class BinaryRBM(BaseEstimator, TransformerMixin):
@@ -89,11 +90,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         for iteration in range(1, self.n_epochs + 1):
             idx = np.random.permutation(len(_data))
             data = _data[idx]
-            for batch in self.get_batches(self.batch_size, data):
-                if len(batch) < self.batch_size:
-                    # Pad with zeros
-                    pad = np.zeros((self.batch_size - batch.shape[0], batch.shape[1]), dtype=batch.dtype)
-                    batch = np.vstack((batch, pad))
+            for batch in batch_generator(self.batch_size, data):
                 accum_delta_W[:] = .0
                 accum_delta_b[:] = .0
                 accum_delta_c[:] = .0
@@ -108,23 +105,6 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
             if self.verbose:
                 error = self._compute_reconstruction_error(data)
                 print ">> Epoch %d finished \tRBM Reconstruction error %f" % (iteration, error)
-
-    @classmethod
-    def get_batches(cls, batch_size, data, labels=None):
-        """
-        Generates batches of samples
-        :param data: array-like, shape = (n_samples, n_features)
-        :param labels: array-like, shape = (n_samples, )
-        :return:
-        """
-        n_batches = int(np.round(len(data) / float(batch_size)))
-        for i in range(n_batches):
-            start = i * batch_size
-            end = start + batch_size
-            if labels is not None:
-                yield data[start:end, :], labels[start:end]
-            else:
-                yield data[start:end, :]
 
     def _contrastive_divergence(self, vector_visible_units):
         """
@@ -443,7 +423,7 @@ class NumPyAbstractSupervisedDBN(AbstractSupervisedDBN):
             data = _data[idx]
             labels = _labels[idx]
             i = 0
-            for batch_data, batch_labels in BinaryRBM.get_batches(self.batch_size, data, labels):
+            for batch_data, batch_labels in batch_generator(self.batch_size, data, labels):
                 # Clear arrays
                 for arr1, arr2 in zip(accum_delta_W, accum_delta_bias):
                     arr1[:], arr2[:] = .0, .0
