@@ -7,7 +7,7 @@ A simple, clean, fast Python implementation of Deep Belief Networks based on bin
 ## Usage
 This implementation follows [scikit-learn](http://scikit-learn.org) guidelines and in turn, can be used alongside it. Next you have a demo code for solving digits classification problem which can be found in **classification_demo.py** (check **regression_demo.py** for a regression problem and **unsupervised_demo.py** for an unsupervised feature learning problem).
 
-Code can run either in GPU or CPU. To decide where the computations have to be performed is as easy as changing the parameter *mode*: if set to 'tf', it will do the computations on GPU (or CPU depending on you hardware) using TensorFlow; if set to 'np' it will compute on CPU using NumPy. **Note only pre-training step is GPU accelerated so far**. See the following snippet:
+Code can run either in GPU or CPU. To decide where the computations have to be performed is as easy as importing the classes from the correct module: if they are imported from _dbn.tensorflow_ it will do the computations on GPU (or CPU depending on you hardware) using TensorFlow; if imported from _dbn_ it will compute on CPU using NumPy. **~~Note only pre-training step is GPU accelerated so far~~ Both pre-training and fine-tuning steps are GPU accelarated**. See the following snippet:
 
     import numpy as np
 
@@ -16,7 +16,8 @@ Code can run either in GPU or CPU. To decide where the computations have to be p
     from sklearn.cross_validation import train_test_split
     from sklearn.metrics.classification import accuracy_score
 
-    from dbn import SupervisedDBNClassification
+    from dbn.tensorflow import SupervisedDBNClassification 
+    # use "from dbn import SupervisedDBNClassification" for computations on CPU with numpy
 
 
     # Loading dataset
@@ -32,14 +33,12 @@ Code can run either in GPU or CPU. To decide where the computations have to be p
     # Training
     classifier = SupervisedDBNClassification(hidden_layers_structure=[256, 256],
                                              learning_rate_rbm=0.05,
-                                             learning_rate=0.5,
+                                             learning_rate=0.1,
                                              n_epochs_rbm=10,
                                              n_iter_backprop=100,
-                                             l2_regularization=0.0,
                                              batch_size=32,
                                              activation_function='relu',
-                                             dropout_p=0.2,
-                                             mode='tf')  # set 'np' for using numpy on CPU
+                                             dropout_p=0.2)
     classifier.fit(X_train, Y_train)
 
     # Test
