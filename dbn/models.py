@@ -325,10 +325,9 @@ class AbstractSupervisedDBN:
         :param X: array-like, shape = (n_samples, n_features)
         :return:
         """
-        transformed_data = self.transform(X)
         if len(X.shape) == 1:  # It is a single sample
-            sample = transformed_data
-            return self._compute_output_units(sample)
+            X = np.expand_dims(X, 0)
+        transformed_data = self.transform(X)
         predicted_data = self._compute_output_units_matrix(transformed_data)
         return predicted_data
 
@@ -346,10 +345,6 @@ class AbstractSupervisedDBN:
 
     @abstractmethod
     def _transform_labels_to_network_format(self, labels):
-        return
-
-    @abstractmethod
-    def _compute_output_units(self, vector_visible_units):
         return
 
     @abstractmethod

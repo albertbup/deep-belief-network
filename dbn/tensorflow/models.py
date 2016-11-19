@@ -250,8 +250,7 @@ class TensorFlowAbstractSupervisedDBN(BaseAbstractSupervisedDBN):
         :return:
         """
         if len(X.shape) == 1:  # It is a single sample
-            sample = X
-            return self._compute_output_units(sample)
+            X = np.expand_dims(X, 0)
         predicted_data = self._compute_output_units_matrix(X)
         return predicted_data
 
@@ -287,10 +286,6 @@ class SupervisedDBNClassification(TensorFlowAbstractSupervisedDBN, ClassifierMix
         """
         return map(lambda idx: self.idx_to_label_map[idx], indexes)
 
-    def _compute_output_units(self, vector_visible_units):
-        # TODO Call to _compute_output_units_matrix properly
-        return
-
     def _compute_output_units_matrix(self, matrix_visible_units):
         predicted_categorical = super(SupervisedDBNClassification, self)._compute_output_units_matrix(
             matrix_visible_units)
@@ -319,9 +314,6 @@ class SupervisedDBNRegression(TensorFlowAbstractSupervisedDBN, RegressorMixin):
         :return:
         """
         return labels
-
-    def _compute_output_units(self, vector_visible_units):
-        return
 
     def _compute_output_units_matrix(self, matrix_visible_units):
         return super(SupervisedDBNRegression, self)._compute_output_units_matrix(matrix_visible_units)
