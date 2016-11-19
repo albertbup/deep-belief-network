@@ -3,7 +3,7 @@
 from distutils.core import setup
 
 setup(name='deep-belief-network',
-      version='0.2.2',
+      version='0.3.0',
       description='Python implementation of Deep Belief Networks',
       packages=['dbn'],
       install_requires=['numpy>=1.9.2',
