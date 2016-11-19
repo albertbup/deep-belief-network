@@ -1,1 +1,1 @@
-from .models import BinaryRBM
+from .models import BinaryRBM, UnsupervisedDBN, SupervisedDBNRegression, SupervisedDBNClassification

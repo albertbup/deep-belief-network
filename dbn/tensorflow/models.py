@@ -4,7 +4,7 @@ from abc import ABCMeta
 import numpy as np
 import tensorflow as tf
 
-from sklearn.base import ClassifierMixin
+from sklearn.base import ClassifierMixin, RegressorMixin
 
 from ..models import BinaryRBM as BaseBinaryRBM
 from ..models import UnsupervisedDBN as BaseUnsupervisedDBN
@@ -154,21 +154,6 @@ class UnsupervisedDBN(BaseUnsupervisedDBN):
     def __init__(self, **kwargs):
         super(UnsupervisedDBN, self).__init__(**kwargs)
         self.rbm_class = BinaryRBM
-        #
-        # def fit(self, *args, **kwargs):
-        #     super(UnsupervisedDBN, self).fit(*args, **kwargs)
-        #
-        #     # Define tensorflow operation for a forward pass
-        #     rbm_activation = self.rbm_layers[0].compute_hidden_units_op
-        #     for rbm in self.rbm_layers[1:]:
-        #         rbm_activation = rbm._activation_function_class(
-        #             tf.transpose(tf.matmul(rbm.W, tf.transpose(rbm_activation))) + rbm.c)
-        #     self.transform_op = rbm_activation
-        #     self.visible_units_placeholder = self.rbm_layers[0].visible_units_placeholder
-
-        # def transform(self, X):
-        #     return sess.run(self.transform_op,
-        #                     feed_dict={self.visible_units_placeholder: X})
 
 
 class TensorFlowAbstractSupervisedDBN(BaseAbstractSupervisedDBN):
@@ -220,9 +205,12 @@ class TensorFlowAbstractSupervisedDBN(BaseAbstractSupervisedDBN):
         self.y_ = tf.placeholder(tf.float32, shape=[None, self.num_classes])
         self.train_step = None
         self.cost_function = None
+        self.output = None
 
     def _fine_tuning(self, data, _labels):
         self.num_classes = self._determine_num_output_neurons(_labels)
+        if self.num_classes == 1:
+            _labels = np.expand_dims(_labels, -1)
 
         self._build_model()
         sess.run(tf.initialize_variables([self.W, self.b]))
@@ -267,6 +255,11 @@ class TensorFlowAbstractSupervisedDBN(BaseAbstractSupervisedDBN):
         predicted_data = self._compute_output_units_matrix(X)
         return predicted_data
 
+    def _compute_output_units_matrix(self, matrix_visible_units):
+        feed_dict = {self.visible_units_placeholder: matrix_visible_units}
+        feed_dict.update({placeholder: 1.0 for placeholder in self.keep_prob_placeholders})
+        return sess.run(self.output, feed_dict=feed_dict)
+
 
 class SupervisedDBNClassification(TensorFlowAbstractSupervisedDBN, ClassifierMixin):
     """
@@ -299,13 +292,42 @@ class SupervisedDBNClassification(TensorFlowAbstractSupervisedDBN, ClassifierMix
         return
 
     def _compute_output_units_matrix(self, matrix_visible_units):
-        feed_dict = {self.visible_units_placeholder: matrix_visible_units}
-        feed_dict.update({placeholder: 1.0 for placeholder in self.keep_prob_placeholders})
-
-        predicted_categorical = sess.run(self.output,
-                                         feed_dict=feed_dict)
+        predicted_categorical = super(SupervisedDBNClassification, self)._compute_output_units_matrix(
+            matrix_visible_units)
         indexes = np.argmax(predicted_categorical, axis=1)
         return self._transform_network_format_to_labels(indexes)
 
     def _determine_num_output_neurons(self, labels):
         return len(np.unique(labels))
+
+
+class SupervisedDBNRegression(TensorFlowAbstractSupervisedDBN, RegressorMixin):
+    """
+    This class implements a Deep Belief Network for regression problems in TensorFlow.
+    """
+
+    def _build_model(self):
+        super(SupervisedDBNRegression, self)._build_model()
+        self.output = self.y
+        self.cost_function = tf.reduce_mean(tf.square(self.y_ - self.y))  # Mean Squared Error
+        self.train_step = self.optimizer.minimize(self.cost_function)
+
+    def _transform_labels_to_network_format(self, labels):
+        """
+        Returns the same labels since regression case does not need to convert anything.
+        :param labels: array-like, shape = (n_samples, targets)
+        :return:
+        """
+        return labels
+
+    def _compute_output_units(self, vector_visible_units):
+        return
+
+    def _compute_output_units_matrix(self, matrix_visible_units):
+        return super(SupervisedDBNRegression, self)._compute_output_units_matrix(matrix_visible_units)
+
+    def _determine_num_output_neurons(self, labels):
+        if len(labels.shape) == 1:
+            return 1
+        else:
+            return labels.shape[1]
