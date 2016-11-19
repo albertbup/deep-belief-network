@@ -5,7 +5,7 @@ from sklearn.datasets import load_digits
 from sklearn.cross_validation import train_test_split
 from sklearn.metrics.classification import accuracy_score
 
-from dbn.tensorflow.models import SupervisedDBNClassification
+from dbn.tensorflow import SupervisedDBNClassification
 
 
 # Loading dataset
@@ -24,7 +24,6 @@ classifier = SupervisedDBNClassification(hidden_layers_structure=[256, 256],
                                          learning_rate=0.1,
                                          n_epochs_rbm=10,
                                          n_iter_backprop=100,
-                                         l2_regularization=0.0,
                                          batch_size=32,
                                          activation_function='relu',
                                          dropout_p=0.2)

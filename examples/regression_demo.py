@@ -6,7 +6,7 @@ from sklearn.cross_validation import train_test_split
 from sklearn.metrics.regression import r2_score, mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
 
-from dbn import SupervisedDBNRegression
+from dbn.tensorflow import SupervisedDBNRegression
 
 
 # Loading dataset
@@ -23,11 +23,10 @@ X_train = min_max_scaler.fit_transform(X_train)
 # Training
 regressor = SupervisedDBNRegression(hidden_layers_structure=[100],
                                     learning_rate_rbm=0.01,
-                                    learning_rate=0.006,
+                                    learning_rate=0.01,
                                     n_epochs_rbm=20,
-                                    n_iter_backprop=100,
-                                    l2_regularization=0.0,
-                                    batch_size=1,
+                                    n_iter_backprop=200,
+                                    batch_size=16,
                                     activation_function='relu')
 regressor.fit(X_train, Y_train)
 
