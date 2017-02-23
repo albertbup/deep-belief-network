@@ -1,11 +1,9 @@
 import atexit
-from abc import ABCMeta
 
+from abc import ABCMeta
 import numpy as np
 import tensorflow as tf
-
 from sklearn.base import ClassifierMixin, RegressorMixin
-
 from ..models import BinaryRBM as BaseBinaryRBM
 from ..models import UnsupervisedDBN as BaseUnsupervisedDBN
 from ..models import AbstractSupervisedDBN as BaseAbstractSupervisedDBN
@@ -36,7 +34,7 @@ class BinaryRBM(BaseBinaryRBM):
         # Initialize RBM parameters
         self._build_model()
 
-        sess.run(tf.initialize_variables([self.W, self.c, self.b]))
+        sess.run(tf.variables_initializer([self.W, self.c, self.b]))
 
         if self.optimization_algorithm == 'sgd':
             self._stochastic_gradient_descent(X)
@@ -80,8 +78,8 @@ class BinaryRBM(BaseBinaryRBM):
         # Positive gradient
         # Outer product. N is the batch size length.
         # From http://stackoverflow.com/questions/35213787/tensorflow-batch-outer-product
-        positive_gradient_op = tf.batch_matmul(tf.expand_dims(sample_hidden_units_op, 2),  # [N, U, 1]
-                                               tf.expand_dims(self.visible_units_placeholder, 1))  # [N, 1, V]
+        positive_gradient_op = tf.matmul(tf.expand_dims(sample_hidden_units_op, 2),  # [N, U, 1]
+                                         tf.expand_dims(self.visible_units_placeholder, 1))  # [N, 1, V]
 
         # Negative gradient
         # Gibbs sampling
@@ -95,8 +93,8 @@ class BinaryRBM(BaseBinaryRBM):
             sample_hidden_units_gibbs_step_op = tf.to_float(random_uniform_values < compute_hidden_units_gibbs_step_op)
             self.random_variables.append(random_uniform_values)
 
-        negative_gradient_op = tf.batch_matmul(tf.expand_dims(sample_hidden_units_gibbs_step_op, 2),  # [N, U, 1]
-                                               tf.expand_dims(compute_visible_units_op, 1))  # [N, 1, V]
+        negative_gradient_op = tf.matmul(tf.expand_dims(sample_hidden_units_gibbs_step_op, 2),  # [N, U, 1]
+                                         tf.expand_dims(compute_visible_units_op, 1))  # [N, 1, V]
 
         compute_delta_W = tf.reduce_mean(positive_gradient_op - negative_gradient_op, 0)
         compute_delta_b = tf.reduce_mean(self.visible_units_placeholder - compute_visible_units_op, 0)
@@ -120,7 +118,7 @@ class BinaryRBM(BaseBinaryRBM):
                     # Pad with zeros
                     pad = np.zeros((self.batch_size - batch.shape[0], batch.shape[1]), dtype=batch.dtype)
                     batch = np.vstack((batch, pad))
-                sess.run(tf.initialize_variables(self.random_variables))  # Need to re-sample from uniform distribution
+                sess.run(tf.variables_initializer(self.random_variables))  # Need to re-sample from uniform distribution
                 sess.run([self.update_W, self.update_b, self.update_c],
                          feed_dict={self.visible_units_placeholder: batch})
             if self.verbose:
@@ -213,7 +211,7 @@ class TensorFlowAbstractSupervisedDBN(BaseAbstractSupervisedDBN):
             _labels = np.expand_dims(_labels, -1)
 
         self._build_model()
-        sess.run(tf.initialize_variables([self.W, self.b]))
+        sess.run(tf.variables_initializer([self.W, self.b]))
 
         labels = self._transform_labels_to_network_format(_labels)
 
@@ -269,7 +267,7 @@ class SupervisedDBNClassification(TensorFlowAbstractSupervisedDBN, ClassifierMix
     def _build_model(self):
         super(SupervisedDBNClassification, self)._build_model()
         self.output = tf.nn.softmax(self.y)
-        self.cost_function = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(self.y, self.y_))
+        self.cost_function = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.y, labels=self.y_))
         self.train_step = self.optimizer.minimize(self.cost_function)
 
     def _transform_labels_to_network_format(self, labels):

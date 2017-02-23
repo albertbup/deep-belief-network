@@ -7,8 +7,8 @@ setup(name='deep-belief-network',
       description='Python implementation of Deep Belief Networks',
       packages=['dbn'],
       install_requires=['numpy==1.12.0',
-                        'scipy>=0.18.1',
-                        'scikit-learn>=0.18.1',
-                        'tensorflow==0.12.1'
+                        'scipy==0.18.1',
+                        'scikit-learn==0.18.1',
+                        'tensorflow==1.0.0'
                         ]
       )
