@@ -14,7 +14,7 @@ boston = load_boston()
 X, Y = boston.data, boston.target
 
 # Splitting data
-X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=0)
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=1337)
 
 # Data scaling
 min_max_scaler = MinMaxScaler()
