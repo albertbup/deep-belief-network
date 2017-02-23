@@ -46,7 +46,6 @@ Code can run either in GPU or CPU. To decide where the computations have to be p
     print 'Done.\nAccuracy: %f' % accuracy_score(Y_test, Y_pred)
 
 ## Installation
-1. [OPTIONAL] Install TensorFlow (if it isn't already) from https://www.tensorflow.org/ in case you want to use GPU.
-2. Open a terminal and type the following line:
+Open a terminal and type the following line:
 
         pip install git+git://github.com/albertbup/deep-belief-network.git
