@@ -3,11 +3,12 @@
 from distutils.core import setup
 
 setup(name='deep-belief-network',
-      version='0.3.0',
+      version='0.4.0',
       description='Python implementation of Deep Belief Networks',
       packages=['dbn'],
-      install_requires=['numpy>=1.9.2',
-                        'scipy>=0.16.1',
-                        'scikit-learn>=0.16.1'
+      install_requires=['numpy==1.12.0',
+                        'scipy>=0.18.1',
+                        'scikit-learn>=0.18.1',
+                        'tensorflow==0.12.1'
                         ]
       )
