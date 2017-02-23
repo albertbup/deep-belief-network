@@ -46,6 +46,8 @@ Code can run either in GPU or CPU. To decide where the computations have to be p
     print 'Done.\nAccuracy: %f' % accuracy_score(Y_test, Y_pred)
 
 ## Installation
-Open a terminal and type the following line:
+I strongly recommend to use a [virtualenv](https://virtualenv.pypa.io/en/stable/) in order not to break anything of your current enviroment.
+
+Open a terminal and type the following line :
 
         pip install git+git://github.com/albertbup/deep-belief-network.git
