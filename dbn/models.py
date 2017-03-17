@@ -270,7 +270,7 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
         return input_data
 
 
-class AbstractSupervisedDBN:
+class AbstractSupervisedDBN(BaseEstimator):
     """
     Abstract class for supervised Deep Belief Network.
     """
@@ -607,9 +607,17 @@ class SupervisedDBNClassification(NumPyAbstractSupervisedDBN, ClassifierMixin):
         dscores[np.where(label == 1)] -= 1
         return dscores
 
+    def predict_proba(self, X):
+        """
+        Predicts probability distribution of classes for each sample in the given data.
+        :param X: array-like, shape = (n_samples, n_features)
+        :return:
+        """
+        return super(SupervisedDBNClassification, self).predict(X)
+
     def predict(self, X):
-        prediction = super(SupervisedDBNClassification, self).predict(X)
-        indexes = np.argmax(prediction, axis=1)
+        probs = self.predict_proba(X)
+        indexes = np.argmax(probs, axis=1)
         return self._transform_network_format_to_labels(indexes)
 
     def _determine_num_output_neurons(self, labels):
