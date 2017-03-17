@@ -615,6 +615,30 @@ class SupervisedDBNClassification(NumPyAbstractSupervisedDBN, ClassifierMixin):
         """
         return super(SupervisedDBNClassification, self).predict(X)
 
+    def predict_proba_dict(self, X):
+        """
+        Predicts probability distribution of classes for each sample in the given data.
+        Returns a list of dictionaries, one per sample. Each dict contains {label_1: prob_1, ..., label_j: prob_j}
+        :param X: array-like, shape = (n_samples, n_features)
+        :return:
+        """
+        if len(X.shape) == 1:  # It is a single sample
+            X = np.expand_dims(X, 0)
+
+        predicted_probs = self.predict_proba(X)
+
+        result = []
+        num_of_data, num_of_labels = predicted_probs.shape
+        for i in range(num_of_data):
+            # key : label
+            # value : predicted probability
+            dict_prob = {}
+            for j in range(num_of_labels):
+                dict_prob[self.idx_to_label_map[j]] = predicted_probs[i][j]
+            result.append(dict_prob)
+
+        return result
+
     def predict(self, X):
         probs = self.predict_proba(X)
         indexes = np.argmax(probs, axis=1)

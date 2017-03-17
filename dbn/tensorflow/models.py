@@ -264,24 +264,6 @@ class SupervisedDBNClassification(TensorFlowAbstractSupervisedDBN, ClassifierMix
     It appends a Softmax Linear Classifier as output layer.
     """
 
-   def predict_prob_dict(self, X):
-        if len(X.shape) == 1:  # It is a single sample
-            X = np.expand_dims(X, 0)
-
-        predicted_categorical = super(SupervisedDBNClassification, self)._compute_output_units_matrix(X)
-
-        result = []
-        num_of_data, num_of_labels = predicted_categorical.shape
-        for i in range(num_of_data):
-            # key : label
-            # value : predicted probability
-            dict_prob = {}
-            for j in range(num_of_labels):
-                dict_prob[self.idx_to_label_map[j]] = predicted_categorical[i][j]
-            result.append(dict_prob)
-
-        return result
-
     def _build_model(self):
         super(SupervisedDBNClassification, self)._build_model()
         self.output = tf.nn.softmax(self.y)
@@ -314,6 +296,30 @@ class SupervisedDBNClassification(TensorFlowAbstractSupervisedDBN, ClassifierMix
         :return:
         """
         return super(SupervisedDBNClassification, self)._compute_output_units_matrix(X)
+
+    def predict_proba_dict(self, X):
+        """
+        Predicts probability distribution of classes for each sample in the given data.
+        Returns a list of dictionaries, one per sample. Each dict contains {label_1: prob_1, ..., label_j: prob_j}
+        :param X: array-like, shape = (n_samples, n_features)
+        :return:
+        """
+        if len(X.shape) == 1:  # It is a single sample
+            X = np.expand_dims(X, 0)
+
+        predicted_probs = self.predict_proba(X)
+
+        result = []
+        num_of_data, num_of_labels = predicted_probs.shape
+        for i in range(num_of_data):
+            # key : label
+            # value : predicted probability
+            dict_prob = {}
+            for j in range(num_of_labels):
+                dict_prob[self.idx_to_label_map[j]] = predicted_probs[i][j]
+            result.append(dict_prob)
+
+        return result
 
     def _determine_num_output_neurons(self, labels):
         return len(np.unique(labels))
