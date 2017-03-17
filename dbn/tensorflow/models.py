@@ -264,6 +264,24 @@ class SupervisedDBNClassification(TensorFlowAbstractSupervisedDBN, ClassifierMix
     It appends a Softmax Linear Classifier as output layer.
     """
 
+   def predict_prob_dict(self, X):
+        if len(X.shape) == 1:  # It is a single sample
+            X = np.expand_dims(X, 0)
+
+        predicted_categorical = super(SupervisedDBNClassification, self)._compute_output_units_matrix(X)
+
+        result = []
+        num_of_data, num_of_labels = predicted_categorical.shape
+        for i in range(num_of_data):
+            # key : label
+            # value : predicted probability
+            dict_prob = {}
+            for j in range(num_of_labels):
+                dict_prob[self.idx_to_label_map[j]] = predicted_categorical[i][j]
+            result.append(dict_prob)
+
+        return result
+
     def _build_model(self):
         super(SupervisedDBNClassification, self)._build_model()
         self.output = tf.nn.softmax(self.y)
