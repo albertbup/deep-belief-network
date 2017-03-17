@@ -27,7 +27,7 @@ from scipy.ndimage import convolve
 from sklearn import linear_model, datasets, metrics
 from sklearn.cross_validation import train_test_split
 from sklearn.pipeline import Pipeline
-from dbn.models import UnsupervisedDBN
+from dbn.models import UnsupervisedDBN # use "from dbn.tensorflow import SupervisedDBNClassification" for computations on TensorFlow
 
 
 ###############################################################################
