@@ -7,6 +7,7 @@ from sklearn.base import ClassifierMixin, RegressorMixin
 from ..models import BinaryRBM as BaseBinaryRBM
 from ..models import UnsupervisedDBN as BaseUnsupervisedDBN
 from ..models import AbstractSupervisedDBN as BaseAbstractSupervisedDBN
+from ..models import BaseModel
 from ..utils import batch_generator, to_categorical
 
 
@@ -18,7 +19,32 @@ sess = tf.Session()
 atexit.register(close_session)
 
 
-class BinaryRBM(BaseBinaryRBM):
+def weight_variable(func, shape, stddev, dtype=tf.float32):
+    initial = func(shape, stddev=stddev, dtype=dtype)
+    return tf.Variable(initial)
+
+
+def bias_variable(value, shape, dtype=tf.float32):
+    initial = tf.constant(value, shape=shape, dtype=dtype)
+    return tf.Variable(initial)
+
+
+class BaseTensorFlowModel(BaseModel):
+    def save(self, save_path):
+        pass
+
+    @classmethod
+    def load(cls, load_path):
+        pass
+
+    def _build_model(self, weights=None):
+        pass
+
+    def _initialize_weights(self, weights):
+        pass
+
+
+class BinaryRBM(BaseBinaryRBM, BaseTensorFlowModel):
     """
     This class implements a Binary Restricted Boltzmann machine based on TensorFlow.
     """
@@ -40,29 +66,35 @@ class BinaryRBM(BaseBinaryRBM):
             self._stochastic_gradient_descent(X)
         else:
             raise ValueError("Invalid optimization algorithm.")
-        return self
+        return
 
-    def _build_model(self):
+    def _initialize_weights(self, weights):
+        if weights:
+            for attr_name, value in weights.iteritems():
+                self.__setattr__(attr_name, tf.Variable(value))
+        else:
+            if self.activation_function == 'sigmoid':
+                stddev = 1.0 / np.sqrt(self.n_visible_units)
+                self.W = weight_variable(tf.random_normal, [self.n_hidden_units, self.n_visible_units], stddev)
+                self.c = weight_variable(tf.random_normal, [self.n_hidden_units], stddev)
+                self.b = weight_variable(tf.random_normal, [self.n_visible_units], stddev)
+                self._activation_function_class = tf.nn.sigmoid
+            elif self.activation_function == 'relu':
+                stddev = 0.1 / np.sqrt(self.n_visible_units)
+                self.W = weight_variable(tf.truncated_normal, [self.n_hidden_units, self.n_visible_units], stddev)
+                self.c = bias_variable(stddev, [self.n_hidden_units])
+                self.b = bias_variable(stddev, [self.n_visible_units])
+                self._activation_function_class = tf.nn.relu
+            else:
+                raise ValueError("Invalid activation function.")
+
+    def _build_model(self, weights=None):
         """
         Builds TensorFlow model.
         :return:
         """
-        # weights and biases
-        if self.activation_function == 'sigmoid':
-            stddev = 1.0 / np.sqrt(self.n_visible_units)
-            self.W = tf.Variable(tf.random_normal([self.n_hidden_units, self.n_visible_units], stddev=stddev))
-            self.c = tf.Variable(tf.random_normal([self.n_hidden_units], stddev=stddev))
-            self.b = tf.Variable(tf.random_normal([self.n_visible_units], stddev=stddev))
-            self._activation_function_class = tf.nn.sigmoid
-        elif self.activation_function == 'relu':
-            stddev = 0.1 / np.sqrt(self.n_visible_units)
-            self.W = tf.Variable(
-                tf.truncated_normal([self.n_hidden_units, self.n_visible_units], stddev=stddev, dtype=tf.float32))
-            self.c = tf.Variable(tf.constant(stddev, shape=[self.n_hidden_units], dtype=tf.float32))
-            self.b = tf.Variable(tf.constant(stddev, shape=[self.n_visible_units], dtype=tf.float32))
-            self._activation_function_class = tf.nn.relu
-        else:
-            raise ValueError("Invalid activation function.")
+        # initialize weights and biases
+        self._initialize_weights(weights)
 
         # TensorFlow operations
         self.visible_units_placeholder = tf.placeholder(tf.float32, shape=[None, self.n_visible_units])
@@ -104,6 +136,48 @@ class BinaryRBM(BaseBinaryRBM):
         self.update_b = tf.assign_add(self.b, self.learning_rate * compute_delta_b)
         self.update_c = tf.assign_add(self.c, self.learning_rate * compute_delta_c)
 
+    def save(self, save_path):
+        import pickle
+
+        dct_to_save = {'W': self.W.eval(sess),
+                       'c': self.c.eval(sess),
+                       'b': self.b.eval(sess),
+                       'n_hidden_units': self.n_hidden_units,
+                       'n_visible_units': self.n_visible_units,
+                       'activation_function': self.activation_function,
+                       'optimization_algorithm': self.optimization_algorithm,
+                       'learning_rate': self.learning_rate,
+                       'n_epochs': self.n_epochs,
+                       'contrastive_divergence_iter': self.contrastive_divergence_iter,
+                       'batch_size': self.batch_size,
+                       'verbose': self.verbose,
+                       '_activation_function_class': self._activation_function_class}
+
+        with open(save_path, 'w') as fp:
+            pickle.dump(dct_to_save, fp)
+
+    @classmethod
+    def load(cls, load_path):
+        import pickle
+
+        with open(load_path, 'r') as fp:
+            dct_to_load = pickle.load(fp)
+
+        weights = {'W': dct_to_load.pop('W'),
+                   'c': dct_to_load.pop('c'),
+                   'b': dct_to_load.pop('b')}
+
+        _activation_function_class = dct_to_load.pop('_activation_function_class')
+        n_visible_units = dct_to_load.pop('n_visible_units')
+
+        rbm = BinaryRBM(**dct_to_load)
+        setattr(rbm, '_activation_function_class', _activation_function_class)
+        setattr(rbm, 'n_visible_units', n_visible_units)
+
+        # Initialize RBM parameters
+        rbm._build_model(weights)
+        sess.run(tf.variables_initializer([rbm.W, rbm.c, rbm.b]))
+
     def _stochastic_gradient_descent(self, _data):
         """
         Performs stochastic gradient descend optimization algorithm.
@@ -144,7 +218,7 @@ class BinaryRBM(BaseBinaryRBM):
                         feed_dict={self.hidden_units_placeholder: matrix_hidden_units})
 
 
-class UnsupervisedDBN(BaseUnsupervisedDBN):
+class UnsupervisedDBN(BaseUnsupervisedDBN, BaseTensorFlowModel):
     """
     This class implements a unsupervised Deep Belief Network in TensorFlow
     """
@@ -154,7 +228,7 @@ class UnsupervisedDBN(BaseUnsupervisedDBN):
         self.rbm_class = BinaryRBM
 
 
-class TensorFlowAbstractSupervisedDBN(BaseAbstractSupervisedDBN):
+class TensorFlowAbstractSupervisedDBN(BaseAbstractSupervisedDBN, BaseTensorFlowModel):
     __metaclass__ = ABCMeta
 
     def __init__(self, **kwargs):
