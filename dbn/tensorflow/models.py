@@ -43,6 +43,14 @@ class BaseTensorFlowModel(BaseModel):
     def _initialize_weights(self, weights):
         pass
 
+    @classmethod
+    def _get_weight_variables_names(cls):
+        pass
+
+    @classmethod
+    def _get_param_names(cls):
+        pass
+
 
 class BinaryRBM(BaseBinaryRBM, BaseTensorFlowModel):
     """
@@ -67,6 +75,23 @@ class BinaryRBM(BaseBinaryRBM, BaseTensorFlowModel):
         else:
             raise ValueError("Invalid optimization algorithm.")
         return
+
+    @classmethod
+    def _get_weight_variables_names(cls):
+        return ['W', 'c', 'b']
+
+    @classmethod
+    def _get_param_names(cls):
+        return ['n_hidden_units',
+                'n_visible_units',
+                'activation_function',
+                'optimization_algorithm',
+                'learning_rate',
+                'n_epochs',
+                'contrastive_divergence_iter',
+                'batch_size',
+                'verbose',
+                '_activation_function_class']
 
     def _initialize_weights(self, weights):
         if weights:
@@ -139,19 +164,9 @@ class BinaryRBM(BaseBinaryRBM, BaseTensorFlowModel):
     def save(self, save_path):
         import pickle
 
-        dct_to_save = {'W': self.W.eval(sess),
-                       'c': self.c.eval(sess),
-                       'b': self.b.eval(sess),
-                       'n_hidden_units': self.n_hidden_units,
-                       'n_visible_units': self.n_visible_units,
-                       'activation_function': self.activation_function,
-                       'optimization_algorithm': self.optimization_algorithm,
-                       'learning_rate': self.learning_rate,
-                       'n_epochs': self.n_epochs,
-                       'contrastive_divergence_iter': self.contrastive_divergence_iter,
-                       'batch_size': self.batch_size,
-                       'verbose': self.verbose,
-                       '_activation_function_class': self._activation_function_class}
+        dct_to_save = {name: self.__getattribute__(name) for name in self._get_param_names()}
+        dct_to_save.update(
+            {name: self.__getattribute__(name).eval(sess) for name in self._get_weight_variables_names()})
 
         with open(save_path, 'w') as fp:
             pickle.dump(dct_to_save, fp)
@@ -163,20 +178,20 @@ class BinaryRBM(BaseBinaryRBM, BaseTensorFlowModel):
         with open(load_path, 'r') as fp:
             dct_to_load = pickle.load(fp)
 
-        weights = {'W': dct_to_load.pop('W'),
-                   'c': dct_to_load.pop('c'),
-                   'b': dct_to_load.pop('b')}
+        weights = {var_name: dct_to_load.pop(var_name) for var_name in cls._get_weight_variables_names()}
 
         _activation_function_class = dct_to_load.pop('_activation_function_class')
         n_visible_units = dct_to_load.pop('n_visible_units')
 
-        rbm = BinaryRBM(**dct_to_load)
-        setattr(rbm, '_activation_function_class', _activation_function_class)
-        setattr(rbm, 'n_visible_units', n_visible_units)
+        instance = cls(**dct_to_load)
+        setattr(instance, '_activation_function_class', _activation_function_class)
+        setattr(instance, 'n_visible_units', n_visible_units)
 
         # Initialize RBM parameters
-        rbm._build_model(weights)
-        sess.run(tf.variables_initializer([rbm.W, rbm.c, rbm.b]))
+        instance._build_model(weights)
+        sess.run(tf.variables_initializer([getattr(instance, name) for name in cls._get_weight_variables_names()]))
+
+        return instance
 
     def _stochastic_gradient_descent(self, _data):
         """
