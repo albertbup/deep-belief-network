@@ -8,7 +8,22 @@ from .activations import SigmoidActivationFunction, ReLUActivationFunction
 from .utils import batch_generator
 
 
-class BinaryRBM(BaseEstimator, TransformerMixin):
+class BaseModel(object):
+    def save(self, save_path):
+        import pickle
+
+        with open(save_path, 'w') as fp:
+            pickle.dump(self, fp)
+
+    @classmethod
+    def load(cls, load_path):
+        import pickle
+
+        with open(load_path, 'r') as fp:
+            return pickle.load(fp)
+
+
+class BinaryRBM(BaseEstimator, TransformerMixin, BaseModel):
     """
     This class implements a Binary Restricted Boltzmann machine.
     """
@@ -203,7 +218,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin):
         return np.mean(np.sum((data_reconstructed - data) ** 2, 1))
 
 
-class UnsupervisedDBN(BaseEstimator, TransformerMixin):
+class UnsupervisedDBN(BaseEstimator, TransformerMixin, BaseModel):
     """
     This class implements a unsupervised Deep Belief Network.
     """
@@ -270,7 +285,7 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin):
         return input_data
 
 
-class AbstractSupervisedDBN(BaseEstimator):
+class AbstractSupervisedDBN(BaseEstimator, BaseModel):
     """
     Abstract class for supervised Deep Belief Network.
     """
