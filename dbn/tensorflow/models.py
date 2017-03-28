@@ -31,10 +31,27 @@ def bias_variable(value, shape, dtype=tf.float32):
 
 class BaseTensorFlowModel(BaseModel):
     def save(self, save_path):
-        pass
+        import pickle
+
+        with open(save_path, 'w') as fp:
+            pickle.dump(self.to_dict(), fp)
 
     @classmethod
     def load(cls, load_path):
+        import pickle
+
+        with open(load_path, 'r') as fp:
+            dct_to_load = pickle.load(fp)
+            return cls.from_dict(dct_to_load)
+
+    def to_dict(self):
+        dct_to_save = {name: self.__getattribute__(name) for name in self._get_param_names()}
+        dct_to_save.update(
+            {name: self.__getattribute__(name).eval(sess) for name in self._get_weight_variables_names()})
+        return dct_to_save
+
+    @classmethod
+    def from_dict(cls, dct_to_load):
         pass
 
     def _build_model(self, weights=None):
@@ -161,23 +178,8 @@ class BinaryRBM(BaseBinaryRBM, BaseTensorFlowModel):
         self.update_b = tf.assign_add(self.b, self.learning_rate * compute_delta_b)
         self.update_c = tf.assign_add(self.c, self.learning_rate * compute_delta_c)
 
-    def save(self, save_path):
-        import pickle
-
-        dct_to_save = {name: self.__getattribute__(name) for name in self._get_param_names()}
-        dct_to_save.update(
-            {name: self.__getattribute__(name).eval(sess) for name in self._get_weight_variables_names()})
-
-        with open(save_path, 'w') as fp:
-            pickle.dump(dct_to_save, fp)
-
     @classmethod
-    def load(cls, load_path):
-        import pickle
-
-        with open(load_path, 'r') as fp:
-            dct_to_load = pickle.load(fp)
-
+    def from_dict(cls, dct_to_load):
         weights = {var_name: dct_to_load.pop(var_name) for var_name in cls._get_weight_variables_names()}
 
         _activation_function_class = dct_to_load.pop('_activation_function_class')
@@ -241,6 +243,33 @@ class UnsupervisedDBN(BaseUnsupervisedDBN, BaseTensorFlowModel):
     def __init__(self, **kwargs):
         super(UnsupervisedDBN, self).__init__(**kwargs)
         self.rbm_class = BinaryRBM
+
+    @classmethod
+    def _get_param_names(cls):
+        return ['hidden_layers_structure',
+                'activation_function',
+                'optimization_algorithm',
+                'learning_rate_rbm',
+                'n_epochs_rbm',
+                'contrastive_divergence_iter',
+                'batch_size',
+                'verbose']
+
+    @classmethod
+    def _get_weight_variables_names(cls):
+        return []
+
+    def to_dict(self):
+        dct_to_save = super(UnsupervisedDBN, self).to_dict()
+        dct_to_save['rbm_layers'] = [rbm.to_dict() for rbm in self.rbm_layers]
+        return dct_to_save
+
+    @classmethod
+    def from_dict(cls, dct_to_load):
+        rbm_layers = dct_to_load.pop('rbm_layers')
+        instance = cls(**dct_to_load)
+        setattr(instance, 'rbm_layers', [instance.rbm_class.from_dict(rbm) for rbm in rbm_layers])
+        return instance
 
 
 class TensorFlowAbstractSupervisedDBN(BaseAbstractSupervisedDBN, BaseTensorFlowModel):
