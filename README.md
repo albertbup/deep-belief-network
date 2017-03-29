@@ -40,10 +40,10 @@ Code can run either in GPU or CPU. To decide where the computations have to be p
                                              dropout_p=0.2)
     classifier.fit(X_train, Y_train)
 
-    # Save the mode
+    # Save the model
     classifier.save('model.pkl')
 
-    # Restore
+    # Restore it
     classifier = SupervisedDBNClassification.load('model.pkl')
 
     # Test
