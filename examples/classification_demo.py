@@ -2,7 +2,7 @@ import numpy as np
 
 np.random.seed(1337)  # for reproducibility
 from sklearn.datasets import load_digits
-from sklearn.cross_validation import train_test_split
+from sklearn.model_selection import train_test_split
 from sklearn.metrics.classification import accuracy_score
 
 from dbn.tensorflow import SupervisedDBNClassification
