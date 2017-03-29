@@ -7,7 +7,7 @@ A simple, clean, fast Python implementation of Deep Belief Networks based on bin
 ## Usage
 This implementation follows [scikit-learn](http://scikit-learn.org) guidelines and in turn, can be used alongside it. Next you have a demo code for solving digits classification problem which can be found in **classification_demo.py** (check **regression_demo.py** for a regression problem and **unsupervised_demo.py** for an unsupervised feature learning problem).
 
-Code can run either in GPU or CPU. To decide where the computations have to be performed is as easy as importing the classes from the correct module: if they are imported from _dbn.tensorflow_ computations will be carried out on GPU (or CPU depending on your hardware) using TensorFlow, if imported from _dbn_ computations will be done on CPU using NumPy. **~~Note only pre-training step is GPU accelerated so far~~ Both pre-training and fine-tuning steps are GPU accelarated**. See the following snippet:
+Code can run either in GPU or CPU. To decide where the computations have to be performed is as easy as importing the classes from the correct module: if they are imported from _dbn.tensorflow_ computations will be carried out on GPU (or CPU depending on your hardware) using TensorFlow, if imported from _dbn_ computations will be done on CPU using NumPy. **~~Note only pre-training step is GPU accelerated so far~~ Both pre-training and fine-tuning steps are GPU accelarated**. Look the following snippet:
 
     import numpy as np
 
