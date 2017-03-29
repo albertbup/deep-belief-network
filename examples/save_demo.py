@@ -28,7 +28,7 @@ classifier = SupervisedDBNClassification(hidden_layers_structure=[256, 256],
                                          dropout_p=0.2)
 classifier.fit(X_train, Y_train)
 
-# Save the model, NOT AVAILABLE for TensorFlow yet.
+# Save the model
 classifier.save('model.pkl')
 
 # Restore
