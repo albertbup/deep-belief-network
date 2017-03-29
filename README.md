@@ -13,12 +13,11 @@ Code can run either in GPU or CPU. To decide where the computations have to be p
 
     np.random.seed(1337)  # for reproducibility
     from sklearn.datasets import load_digits
-    from sklearn.cross_validation import train_test_split
+    from sklearn.model_selection import train_test_split
     from sklearn.metrics.classification import accuracy_score
 
-    from dbn.tensorflow import SupervisedDBNClassification 
+    from dbn.tensorflow import SupervisedDBNClassification
     # use "from dbn import SupervisedDBNClassification" for computations on CPU with numpy
-
 
     # Loading dataset
     digits = load_digits()
@@ -40,6 +39,12 @@ Code can run either in GPU or CPU. To decide where the computations have to be p
                                              activation_function='relu',
                                              dropout_p=0.2)
     classifier.fit(X_train, Y_train)
+
+    # Save the mode
+    classifier.save('model.pkl')
+
+    # Restore
+    classifier = SupervisedDBNClassification.load('model.pkl')
 
     # Test
     Y_pred = classifier.predict(X_test)
