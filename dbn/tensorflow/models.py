@@ -430,6 +430,21 @@ class SupervisedDBNClassification(TensorFlowAbstractSupervisedDBN, ClassifierMix
         self.cost_function = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.y, labels=self.y_))
         self.train_step = self.optimizer.minimize(self.cost_function)
 
+    @classmethod
+    def _get_param_names(cls):
+        return super(SupervisedDBNClassification, cls)._get_param_names() + ['label_to_idx_map', 'idx_to_label_map']
+
+    @classmethod
+    def from_dict(cls, dct_to_load):
+        label_to_idx_map = dct_to_load.pop('label_to_idx_map')
+        idx_to_label_map = dct_to_load.pop('idx_to_label_map')
+
+        instance = super(SupervisedDBNClassification, cls).from_dict(dct_to_load)
+        setattr(instance, 'label_to_idx_map', label_to_idx_map)
+        setattr(instance, 'idx_to_label_map', idx_to_label_map)
+
+        return instance
+
     def _transform_labels_to_network_format(self, labels):
         new_labels, label_to_idx_map, idx_to_label_map = to_categorical(labels, self.num_classes)
         self.label_to_idx_map = label_to_idx_map

@@ -5,8 +5,7 @@ from sklearn.datasets import load_digits
 from sklearn.cross_validation import train_test_split
 from sklearn.metrics.classification import accuracy_score
 
-from dbn.models import SupervisedDBNClassification
-
+from dbn.tensorflow import SupervisedDBNClassification
 
 # Loading dataset
 digits = load_digits()
