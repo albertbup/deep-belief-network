@@ -1,8 +1,8 @@
 from abc import ABCMeta, abstractmethod
 
 import numpy as np
-from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin, RegressorMixin
 from scipy.stats import truncnorm
+from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin, RegressorMixin
 
 from .activations import SigmoidActivationFunction, ReLUActivationFunction
 from .utils import batch_generator
@@ -313,6 +313,7 @@ class AbstractSupervisedDBN(BaseEstimator, BaseModel):
                                                        contrastive_divergence_iter=contrastive_divergence_iter,
                                                        batch_size=batch_size,
                                                        verbose=verbose)
+        self.unsupervised_dbn_class = unsupervised_dbn_class
         self.n_iter_backprop = n_iter_backprop
         self.l2_regularization = l2_regularization
         self.learning_rate = learning_rate

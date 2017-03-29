@@ -1,13 +1,14 @@
 import atexit
-
 from abc import ABCMeta
+
 import numpy as np
 import tensorflow as tf
 from sklearn.base import ClassifierMixin, RegressorMixin
-from ..models import BinaryRBM as BaseBinaryRBM
-from ..models import UnsupervisedDBN as BaseUnsupervisedDBN
+
 from ..models import AbstractSupervisedDBN as BaseAbstractSupervisedDBN
 from ..models import BaseModel
+from ..models import BinaryRBM as BaseBinaryRBM
+from ..models import UnsupervisedDBN as BaseUnsupervisedDBN
 from ..utils import batch_generator, to_categorical
 
 
@@ -278,7 +279,60 @@ class TensorFlowAbstractSupervisedDBN(BaseAbstractSupervisedDBN, BaseTensorFlowM
     def __init__(self, **kwargs):
         super(TensorFlowAbstractSupervisedDBN, self).__init__(UnsupervisedDBN, **kwargs)
 
-    def _build_model(self):
+    @classmethod
+    def _get_param_names(cls):
+        return ['n_iter_backprop',
+                'l2_regularization',
+                'learning_rate',
+                'batch_size',
+                'dropout_p',
+                'verbose']
+
+    @classmethod
+    def _get_weight_variables_names(cls):
+        return ['W', 'b']
+
+    def _initialize_weights(self, weights):
+        if weights:
+            for attr_name, value in weights.iteritems():
+                self.__setattr__(attr_name, tf.Variable(value))
+        else:
+            if self.unsupervised_dbn.activation_function == 'sigmoid':
+                stddev = 1.0 / np.sqrt(self.input_units)
+                self.W = weight_variable(tf.random_normal, [self.input_units, self.num_classes], stddev)
+                self.b = weight_variable(tf.random_normal, [self.num_classes], stddev)
+                self._activation_function_class = tf.nn.sigmoid
+            elif self.unsupervised_dbn.activation_function == 'relu':
+                stddev = 0.1 / np.sqrt(self.input_units)
+                self.W = weight_variable(tf.truncated_normal, [self.input_units, self.num_classes], stddev)
+                self.b = bias_variable(stddev, [self.num_classes])
+                self._activation_function_class = tf.nn.relu
+            else:
+                raise ValueError("Invalid activation function.")
+
+    def to_dict(self):
+        dct_to_save = super(TensorFlowAbstractSupervisedDBN, self).to_dict()
+        dct_to_save['unsupervised_dbn'] = self.unsupervised_dbn.to_dict()
+        dct_to_save['num_classes'] = self.num_classes
+        return dct_to_save
+
+    @classmethod
+    def from_dict(cls, dct_to_load):
+        weights = {var_name: dct_to_load.pop(var_name) for var_name in cls._get_weight_variables_names()}
+        unsupervised_dbn_dct = dct_to_load.pop('unsupervised_dbn')
+        num_classes = dct_to_load.pop('num_classes')
+
+        instance = cls(**dct_to_load)
+
+        setattr(instance, 'unsupervised_dbn', instance.unsupervised_dbn_class.from_dict(unsupervised_dbn_dct))
+        setattr(instance, 'num_classes', num_classes)
+
+        # Initialize RBM parameters
+        instance._build_model(weights)
+        sess.run(tf.variables_initializer([getattr(instance, name) for name in cls._get_weight_variables_names()]))
+        return instance
+
+    def _build_model(self, weights=None):
         self.visible_units_placeholder = self.unsupervised_dbn.rbm_layers[0].visible_units_placeholder
         keep_prob = tf.placeholder(tf.float32)
         visible_units_placeholder_drop = tf.nn.dropout(self.visible_units_placeholder, keep_prob)
@@ -294,22 +348,10 @@ class TensorFlowAbstractSupervisedDBN(BaseAbstractSupervisedDBN, BaseTensorFlowM
             rbm_activation = tf.nn.dropout(rbm_activation, keep_prob)
 
         self.transform_op = rbm_activation
-        input_units = self.unsupervised_dbn.rbm_layers[-1].n_hidden_units
+        self.input_units = self.unsupervised_dbn.rbm_layers[-1].n_hidden_units
 
         # weights and biases
-        if self.unsupervised_dbn.activation_function == 'sigmoid':
-            stddev = 1.0 / np.sqrt(input_units)
-            self.W = tf.Variable(tf.random_normal([input_units, self.num_classes], stddev=stddev))
-            self.b = tf.Variable(tf.random_normal([self.num_classes], stddev=stddev))
-            self._activation_function_class = tf.nn.sigmoid
-        elif self.unsupervised_dbn.activation_function == 'relu':
-            stddev = 0.1 / np.sqrt(input_units)
-            self.W = tf.Variable(
-                tf.truncated_normal([input_units, self.num_classes], stddev=stddev, dtype=tf.float32))
-            self.b = tf.Variable(tf.constant(stddev, shape=[self.num_classes], dtype=tf.float32))
-            self._activation_function_class = tf.nn.relu
-        else:
-            raise ValueError("Invalid activation function.")
+        self._initialize_weights(weights)
 
         if self.unsupervised_dbn.optimization_algorithm == 'sgd':
             self.optimizer = tf.train.GradientDescentOptimizer(self.learning_rate)
@@ -382,8 +424,8 @@ class SupervisedDBNClassification(TensorFlowAbstractSupervisedDBN, ClassifierMix
     It appends a Softmax Linear Classifier as output layer.
     """
 
-    def _build_model(self):
-        super(SupervisedDBNClassification, self)._build_model()
+    def _build_model(self, weights=None):
+        super(SupervisedDBNClassification, self)._build_model(weights)
         self.output = tf.nn.softmax(self.y)
         self.cost_function = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.y, labels=self.y_))
         self.train_step = self.optimizer.minimize(self.cost_function)
@@ -448,8 +490,8 @@ class SupervisedDBNRegression(TensorFlowAbstractSupervisedDBN, RegressorMixin):
     This class implements a Deep Belief Network for regression problems in TensorFlow.
     """
 
-    def _build_model(self):
-        super(SupervisedDBNRegression, self)._build_model()
+    def _build_model(self, weights=None):
+        super(SupervisedDBNRegression, self)._build_model(weights)
         self.output = self.y
         self.cost_function = tf.reduce_mean(tf.square(self.y_ - self.y))  # Mean Squared Error
         self.train_step = self.optimizer.minimize(self.cost_function)
