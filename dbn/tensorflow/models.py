@@ -215,7 +215,7 @@ class BinaryRBM(BaseBinaryRBM, BaseTensorFlowModel):
                          feed_dict={self.visible_units_placeholder: batch})
             if self.verbose:
                 error = self._compute_reconstruction_error(data)
-                print ">> Epoch %d finished \tRBM Reconstruction error %f" % (iteration, error)
+                print(">> Epoch %d finished \tRBM Reconstruction error %f" % (iteration, error))
 
     def _compute_hidden_units_matrix(self, matrix_visible_units):
         """
@@ -376,10 +376,10 @@ class TensorFlowAbstractSupervisedDBN(BaseAbstractSupervisedDBN, BaseTensorFlowM
         labels = self._transform_labels_to_network_format(_labels)
 
         if self.verbose:
-            print "[START] Fine tuning step:"
+            print("[START] Fine tuning step:")
         self._stochastic_gradient_descent(data, labels)
         if self.verbose:
-            print "[END] Fine tuning step"
+            print("[END] Fine tuning step")
 
     def _stochastic_gradient_descent(self, data, labels):
         for iteration in range(self.n_iter_backprop):
@@ -393,7 +393,7 @@ class TensorFlowAbstractSupervisedDBN(BaseAbstractSupervisedDBN, BaseTensorFlowM
                 feed_dict = {self.visible_units_placeholder: data, self.y_: labels}
                 feed_dict.update({placeholder: 1.0 for placeholder in self.keep_prob_placeholders})
                 error = sess.run(self.cost_function, feed_dict=feed_dict)
-                print ">> Epoch %d finished \tANN training loss %f" % (iteration, error)
+                print(">> Epoch %d finished \tANN training loss %f" % (iteration, error))
 
     def transform(self, X):
         feed_dict = {self.visible_units_placeholder: X}

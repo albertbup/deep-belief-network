@@ -48,7 +48,7 @@ Code can run either in GPU or CPU. To decide where the computations have to be p
 
     # Test
     Y_pred = classifier.predict(X_test)
-    print 'Done.\nAccuracy: %f' % accuracy_score(Y_test, Y_pred)
+    print('Done.\nAccuracy: %f' % accuracy_score(Y_test, Y_pred))
 
 ## Installation
 I strongly recommend to use a [virtualenv](https://virtualenv.pypa.io/en/stable/) in order not to break anything of your current enviroment.
