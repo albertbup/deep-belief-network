@@ -457,7 +457,7 @@ class SupervisedDBNClassification(TensorFlowAbstractSupervisedDBN, ClassifierMix
         :param indexes: array-like, shape = (n_samples, )
         :return:
         """
-        return map(lambda idx: self.idx_to_label_map[idx], indexes)
+        return list(map(lambda idx: self.idx_to_label_map[idx], indexes))
 
     def predict(self, X):
         probs = self.predict_proba(X)
