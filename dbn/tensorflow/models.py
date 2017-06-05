@@ -34,14 +34,14 @@ class BaseTensorFlowModel(BaseModel):
     def save(self, save_path):
         import pickle
 
-        with open(save_path, 'w') as fp:
+        with open(save_path, 'wb') as fp:
             pickle.dump(self.to_dict(), fp)
 
     @classmethod
     def load(cls, load_path):
         import pickle
 
-        with open(load_path, 'r') as fp:
+        with open(load_path, 'rb') as fp:
             dct_to_load = pickle.load(fp)
             return cls.from_dict(dct_to_load)
 
@@ -113,7 +113,7 @@ class BinaryRBM(BaseBinaryRBM, BaseTensorFlowModel):
 
     def _initialize_weights(self, weights):
         if weights:
-            for attr_name, value in weights.iteritems():
+            for attr_name, value in weights.items():
                 self.__setattr__(attr_name, tf.Variable(value))
         else:
             if self.activation_function == 'sigmoid':
@@ -294,7 +294,7 @@ class TensorFlowAbstractSupervisedDBN(BaseAbstractSupervisedDBN, BaseTensorFlowM
 
     def _initialize_weights(self, weights):
         if weights:
-            for attr_name, value in weights.iteritems():
+            for attr_name, value in weights.items():
                 self.__setattr__(attr_name, tf.Variable(value))
         else:
             if self.unsupervised_dbn.activation_function == 'sigmoid':
