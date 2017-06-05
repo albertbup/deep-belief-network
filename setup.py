@@ -8,6 +8,6 @@ with open('requirements.txt') as fp:
 setup(name='deep-belief-network',
       version='1.0.0',
       description='Python implementation of Deep Belief Networks',
-      packages=['dbn'],
+      packages=['dbn', 'dbn.tensorflow'],
       install_requires=requirements,
       )
