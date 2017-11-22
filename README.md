@@ -55,7 +55,12 @@ I strongly recommend to use a [virtualenv](https://virtualenv.pypa.io/en/stable/
 
 Open a terminal and type the following line, it will install the package using pip:
 
+CPU:
+    
         pip install git+git://github.com/albertbup/deep-belief-network.git
+GPU:
+    
+        pip install git+git://github.com/albertbup/deep-belief-network.git@master_gpu
         
 ## Citing the code
 BibTex reference format:
