@@ -9,46 +9,48 @@ This implementation works on Python 3. It follows [scikit-learn](http://scikit-l
 
 Code can run either in GPU or CPU. To decide where the computations have to be performed is as easy as importing the classes from the correct module: if they are imported from _dbn.tensorflow_ computations will be carried out on GPU (or CPU depending on your hardware) using TensorFlow, if imported from _dbn_ computations will be done on CPU using NumPy. **~~Note only pre-training step is GPU accelerated so far~~ Both pre-training and fine-tuning steps are GPU accelarated**. Look the following snippet:
 
-    import numpy as np
+```python
+import numpy as np
 
-    np.random.seed(1337)  # for reproducibility
-    from sklearn.datasets import load_digits
-    from sklearn.model_selection import train_test_split
-    from sklearn.metrics.classification import accuracy_score
+np.random.seed(1337)  # for reproducibility
+from sklearn.datasets import load_digits
+from sklearn.model_selection import train_test_split
+from sklearn.metrics.classification import accuracy_score
 
-    from dbn.tensorflow import SupervisedDBNClassification
-    # use "from dbn import SupervisedDBNClassification" for computations on CPU with numpy
+from dbn.tensorflow import SupervisedDBNClassification
+# use "from dbn import SupervisedDBNClassification" for computations on CPU with numpy
 
-    # Loading dataset
-    digits = load_digits()
-    X, Y = digits.data, digits.target
+# Loading dataset
+digits = load_digits()
+X, Y = digits.data, digits.target
 
-    # Data scaling
-    X = (X / 16).astype(np.float32)
+# Data scaling
+X = (X / 16).astype(np.float32)
 
-    # Splitting data
-    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=0)
+# Splitting data
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=0)
 
-    # Training
-    classifier = SupervisedDBNClassification(hidden_layers_structure=[256, 256],
-                                             learning_rate_rbm=0.05,
-                                             learning_rate=0.1,
-                                             n_epochs_rbm=10,
-                                             n_iter_backprop=100,
-                                             batch_size=32,
-                                             activation_function='relu',
-                                             dropout_p=0.2)
-    classifier.fit(X_train, Y_train)
+# Training
+classifier = SupervisedDBNClassification(hidden_layers_structure=[256, 256],
+                                         learning_rate_rbm=0.05,
+                                         learning_rate=0.1,
+                                         n_epochs_rbm=10,
+                                         n_iter_backprop=100,
+                                         batch_size=32,
+                                         activation_function='relu',
+                                         dropout_p=0.2)
+classifier.fit(X_train, Y_train)
 
-    # Save the model
-    classifier.save('model.pkl')
+# Save the model
+classifier.save('model.pkl')
 
-    # Restore it
-    classifier = SupervisedDBNClassification.load('model.pkl')
+# Restore it
+classifier = SupervisedDBNClassification.load('model.pkl')
 
-    # Test
-    Y_pred = classifier.predict(X_test)
-    print('Done.\nAccuracy: %f' % accuracy_score(Y_test, Y_pred))
+# Test
+Y_pred = classifier.predict(X_test)
+print('Done.\nAccuracy: %f' % accuracy_score(Y_test, Y_pred))
+```
 
 ## Installation
 I strongly recommend to use a [virtualenv](https://virtualenv.pypa.io/en/stable/) in order not to break anything of your current enviroment.
