@@ -170,7 +170,8 @@ class BinaryRBM(BaseEstimator, TransformerMixin, BaseModel):
         :return:
         """
         v = np.expand_dims(vector_visible_units, 0)
-        return np.squeeze(self._compute_hidden_units_matrix(v))
+        h = np.squeeze(self._compute_hidden_units_matrix(v))
+        return np.array([h]) if not h.shape else h
 
     def _compute_hidden_units_matrix(self, matrix_visible_units):
         """
@@ -188,7 +189,8 @@ class BinaryRBM(BaseEstimator, TransformerMixin, BaseModel):
         :return:
         """
         h = np.expand_dims(vector_hidden_units, 0)
-        return np.squeeze(self._compute_visible_units_matrix(h))
+        v = np.squeeze(self._compute_visible_units_matrix(h))
+        return np.array([v]) if not v.shape else v
 
     def _compute_visible_units_matrix(self, matrix_hidden_units):
         """
