@@ -427,7 +427,7 @@ class SupervisedDBNClassification(TensorFlowAbstractSupervisedDBN, ClassifierMix
     def _build_model(self, weights=None):
         super(SupervisedDBNClassification, self)._build_model(weights)
         self.output = tf.nn.softmax(self.y)
-        self.cost_function = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.y, labels=self.y_))
+        self.cost_function = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.y, labels=tf.stop_gradient(self.y_)))
         self.train_step = self.optimizer.minimize(self.cost_function)
 
     @classmethod
