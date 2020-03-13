@@ -55,3 +55,9 @@ docs/_build/
 
 # PyBuilder
 target/
+
+# mypy_cache
+.mypy_cache/
+
+# vscode
+.vscode/

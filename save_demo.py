@@ -1,11 +1,11 @@
+from dbn.tensorflow import SupervisedDBNClassification
+from sklearn.metrics.classification import accuracy_score
+from sklearn.model_selection import train_test_split
+from sklearn.datasets import load_digits
 import numpy as np
 
 np.random.seed(1337)  # for reproducibility
-from sklearn.datasets import load_digits
-from sklearn.model_selection import train_test_split
-from sklearn.metrics.classification import accuracy_score
 
-from dbn.tensorflow import SupervisedDBNClassification
 
 # Loading dataset
 digits = load_digits()
@@ -15,7 +15,8 @@ X, Y = digits.data, digits.target
 X = (X / 16).astype(np.float32)
 
 # Splitting data
-X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=0)
+X_train, X_test, Y_train, Y_test = train_test_split(
+    X, Y, test_size=0.2, random_state=0)
 
 # Training
 classifier = SupervisedDBNClassification(hidden_layers_structure=[256, 256],
