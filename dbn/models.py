@@ -52,18 +52,22 @@ class BinaryRBM(BaseEstimator, TransformerMixin, BaseModel):
         :param X: array-like, shape = (n_samples, n_features)
         :return:
         """
-        # Initialize RBM parameters
         self.n_visible_units = X.shape[1]
         if self.activation_function == 'sigmoid':
-            self.W = np.random.randn(self.n_hidden_units, self.n_visible_units) / np.sqrt(self.n_visible_units)
-            self.c = np.random.randn(self.n_hidden_units) / np.sqrt(self.n_visible_units)
-            self.b = np.random.randn(self.n_visible_units) / np.sqrt(self.n_visible_units)
+            self.W = np.random.randn(
+                self.n_hidden_units, self.n_visible_units) / np.sqrt(self.n_visible_units)
+            self.c = np.random.randn(
+                self.n_hidden_units) / np.sqrt(self.n_visible_units)
+            self.b = np.random.randn(
+                self.n_visible_units) / np.sqrt(self.n_visible_units)
             self._activation_function_class = SigmoidActivationFunction
         elif self.activation_function == 'relu':
             self.W = truncnorm.rvs(-0.2, 0.2, size=[self.n_hidden_units, self.n_visible_units]) / np.sqrt(
                 self.n_visible_units)
-            self.c = np.full(self.n_hidden_units, 0.1) / np.sqrt(self.n_visible_units)
-            self.b = np.full(self.n_visible_units, 0.1) / np.sqrt(self.n_visible_units)
+            self.c = np.full(self.n_hidden_units, 0.1) / \
+                np.sqrt(self.n_visible_units)
+            self.b = np.full(self.n_visible_units, 0.1) / \
+                np.sqrt(self.n_visible_units)
             self._activation_function_class = ReLUActivationFunction
         else:
             raise ValueError("Invalid activation function.")
@@ -110,16 +114,21 @@ class BinaryRBM(BaseEstimator, TransformerMixin, BaseModel):
                 accum_delta_b[:] = .0
                 accum_delta_c[:] = .0
                 for sample in batch:
-                    delta_W, delta_b, delta_c = self._contrastive_divergence(sample)
+                    delta_W, delta_b, delta_c = self._contrastive_divergence(
+                        sample)
                     accum_delta_W += delta_W
                     accum_delta_b += delta_b
                     accum_delta_c += delta_c
-                self.W += self.learning_rate * (accum_delta_W / self.batch_size)
-                self.b += self.learning_rate * (accum_delta_b / self.batch_size)
-                self.c += self.learning_rate * (accum_delta_c / self.batch_size)
+                self.W += self.learning_rate * \
+                    (accum_delta_W / self.batch_size)
+                self.b += self.learning_rate * \
+                    (accum_delta_b / self.batch_size)
+                self.c += self.learning_rate * \
+                    (accum_delta_c / self.batch_size)
             if self.verbose:
                 error = self._compute_reconstruction_error(data)
-                print(">> Epoch %d finished \tRBM Reconstruction error %f" % (iteration, error))
+                print(">> Epoch %d finished \tRBM Reconstruction error %f" %
+                      (iteration, error))
 
     def _contrastive_divergence(self, vector_visible_units):
         """
@@ -253,17 +262,35 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin, BaseModel):
         """
         # Initialize rbm layers
         self.rbm_layers = list()
-        for n_hidden_units in self.hidden_layers_structure:
-            rbm = self.rbm_class(n_hidden_units=n_hidden_units,
-                                 activation_function=self.activation_function,
-                                 optimization_algorithm=self.optimization_algorithm,
-                                 learning_rate=self.learning_rate_rbm,
-                                 n_epochs=self.n_epochs_rbm,
-                                 contrastive_divergence_iter=self.contrastive_divergence_iter,
-                                 batch_size=self.batch_size,
-                                 verbose=self.verbose)
-            self.rbm_layers.append(rbm)
-
+        if type(self.learning_rate_rbm) == list and len(self.learning_rate_rbm) > 1:
+            # Set diffreent learning_rate for each layers
+            mark = 0
+            for n_hidden_units in self.hidden_layers_structure:
+                rbm = self.rbm_class(
+                    n_hidden_units=n_hidden_units,
+                    activation_function=self.activation_function,
+                    optimization_algorithm=self.optimization_algorithm,
+                    learning_rate=self.learning_rate_rbm[mark],
+                    n_epochs=self.n_epochs_rbm,
+                    contrastive_divergence_iter=self.contrastive_divergence_iter,
+                    batch_size=self.batch_size,
+                    verbose=self.verbose)
+                mark += 1
+                self.rbm_layers.append(rbm)
+        else:
+            mark = 0
+            for n_hidden_units in self.hidden_layers_structure:
+                rbm = self.rbm_class(
+                    n_hidden_units=n_hidden_units,
+                    activation_function=self.activation_function,
+                    optimization_algorithm=self.optimization_algorithm,
+                    learning_rate=self.learning_rate_rbm,
+                    n_epochs=self.n_epochs_rbm,
+                    contrastive_divergence_iter=self.contrastive_divergence_iter,
+                    batch_size=self.batch_size,
+                    verbose=self.verbose)
+                mark += 1
+                self.rbm_layers.append(rbm)
         # Fit RBM
         if self.verbose:
             print("[START] Pre-training step:")
@@ -307,14 +334,16 @@ class AbstractSupervisedDBN(BaseEstimator, BaseModel):
                  batch_size=32,
                  dropout_p=0,  # float between 0 and 1. Fraction of the input units to drop
                  verbose=True):
-        self.unsupervised_dbn = unsupervised_dbn_class(hidden_layers_structure=hidden_layers_structure,
-                                                       activation_function=activation_function,
-                                                       optimization_algorithm=optimization_algorithm,
-                                                       learning_rate_rbm=learning_rate_rbm,
-                                                       n_epochs_rbm=n_epochs_rbm,
-                                                       contrastive_divergence_iter=contrastive_divergence_iter,
-                                                       batch_size=batch_size,
-                                                       verbose=verbose)
+        self.unsupervised_dbn = unsupervised_dbn_class(
+            hidden_layers_structure=hidden_layers_structure,
+            activation_function=activation_function,
+            optimization_algorithm=optimization_algorithm,
+            learning_rate_rbm=learning_rate_rbm,
+            n_epochs_rbm=n_epochs_rbm,
+            contrastive_divergence_iter=contrastive_divergence_iter,
+            batch_size=batch_size,
+            verbose=verbose)
+
         self.unsupervised_dbn_class = unsupervised_dbn_class
         self.n_iter_backprop = n_iter_backprop
         self.l2_regularization = l2_regularization
@@ -389,7 +418,8 @@ class NumPyAbstractSupervisedDBN(AbstractSupervisedDBN):
     __metaclass__ = ABCMeta
 
     def __init__(self, **kwargs):
-        super(NumPyAbstractSupervisedDBN, self).__init__(UnsupervisedDBN, **kwargs)
+        super(NumPyAbstractSupervisedDBN, self).__init__(
+            UnsupervisedDBN, **kwargs)
 
     def _compute_activations(self, sample):
         """
@@ -426,9 +456,11 @@ class NumPyAbstractSupervisedDBN(AbstractSupervisedDBN):
         if self.verbose:
             matrix_error = np.zeros([len(_data), self.num_classes])
         num_samples = len(_data)
-        accum_delta_W = [np.zeros(rbm.W.shape) for rbm in self.unsupervised_dbn.rbm_layers]
+        accum_delta_W = [np.zeros(rbm.W.shape)
+                         for rbm in self.unsupervised_dbn.rbm_layers]
         accum_delta_W.append(np.zeros(self.W.shape))
-        accum_delta_bias = [np.zeros(rbm.c.shape) for rbm in self.unsupervised_dbn.rbm_layers]
+        accum_delta_bias = [np.zeros(rbm.c.shape)
+                            for rbm in self.unsupervised_dbn.rbm_layers]
         accum_delta_bias.append(np.zeros(self.b.shape))
 
         for iteration in range(1, self.n_iter_backprop + 1):
@@ -441,7 +473,8 @@ class NumPyAbstractSupervisedDBN(AbstractSupervisedDBN):
                 for arr1, arr2 in zip(accum_delta_W, accum_delta_bias):
                     arr1[:], arr2[:] = .0, .0
                 for sample, label in zip(batch_data, batch_labels):
-                    delta_W, delta_bias, predicted = self._backpropagation(sample, label)
+                    delta_W, delta_bias, predicted = self._backpropagation(
+                        sample, label)
                     for layer in range(len(self.unsupervised_dbn.rbm_layers) + 1):
                         accum_delta_W[layer] += delta_W[layer]
                         accum_delta_bias[layer] += delta_bias[layer]
@@ -456,17 +489,20 @@ class NumPyAbstractSupervisedDBN(AbstractSupervisedDBN):
                     rbm.W = (1 - (
                         self.learning_rate * self.l2_regularization) / num_samples) * rbm.W - self.learning_rate * (
                         accum_delta_W[layer] / self.batch_size)
-                    rbm.c -= self.learning_rate * (accum_delta_bias[layer] / self.batch_size)
+                    rbm.c -= self.learning_rate * \
+                        (accum_delta_bias[layer] / self.batch_size)
                     layer += 1
                 # Updating parameters of output layer
                 self.W = (1 - (
                     self.learning_rate * self.l2_regularization) / num_samples) * self.W - self.learning_rate * (
                     accum_delta_W[layer] / self.batch_size)
-                self.b -= self.learning_rate * (accum_delta_bias[layer] / self.batch_size)
+                self.b -= self.learning_rate * \
+                    (accum_delta_bias[layer] / self.batch_size)
 
             if self.verbose:
                 error = np.mean(np.sum(matrix_error, 1))
-                print(">> Epoch %d finished \tANN training loss %f" % (iteration, error))
+                print(">> Epoch %d finished \tANN training loss %.10f" %
+                      (iteration, error))
 
     def _backpropagation(self, input_vector, label):
         """
@@ -487,7 +523,8 @@ class NumPyAbstractSupervisedDBN(AbstractSupervisedDBN):
 
         # Backward pass: computing deltas
         activation_output_layer = layers_activation[-1]
-        delta_output_layer = self._compute_output_layer_delta(y, activation_output_layer)
+        delta_output_layer = self._compute_output_layer_delta(
+            y, activation_output_layer)
         deltas.append(delta_output_layer)
         layer_idx = list(range(len(self.unsupervised_dbn.rbm_layers)))
         layer_idx.reverse()
@@ -525,7 +562,8 @@ class NumPyAbstractSupervisedDBN(AbstractSupervisedDBN):
         n_hidden_units_previous_layer = self.unsupervised_dbn.rbm_layers[-1].n_hidden_units
         self.W = np.random.randn(self.num_classes, n_hidden_units_previous_layer) / np.sqrt(
             n_hidden_units_previous_layer)
-        self.b = np.random.randn(self.num_classes) / np.sqrt(n_hidden_units_previous_layer)
+        self.b = np.random.randn(self.num_classes) / \
+            np.sqrt(n_hidden_units_previous_layer)
 
         labels = self._transform_labels_to_network_format(_labels)
 
@@ -610,7 +648,8 @@ class SupervisedDBNClassification(NumPyAbstractSupervisedDBN, ClassifierMixin):
         :param matrix_visible_units: shape = (n_samples, n_features)
         :return:
         """
-        matrix_scores = np.transpose(np.dot(self.W, np.transpose(matrix_visible_units)) + self.b[:, np.newaxis])
+        matrix_scores = np.transpose(np.dot(self.W, np.transpose(
+            matrix_visible_units)) + self.b[:, np.newaxis])
         exp_scores = np.exp(matrix_scores)
         return exp_scores / np.expand_dims(np.sum(exp_scores, axis=1), 1)
 
