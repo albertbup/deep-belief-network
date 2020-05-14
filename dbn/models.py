@@ -22,8 +22,60 @@ class BaseModel(object):
         with open(load_path, 'rb') as fp:
             return pickle.load(fp)
 
+class BaseNumPyModel(BaseModel):
+    def save(self, save_path):
+        import pickle
 
-class BinaryRBM(BaseEstimator, TransformerMixin, BaseModel):
+        with open(save_path, 'wb') as fp:
+            pickle.dump(self.to_dict(), fp)
+
+    @classmethod
+    def load(cls, load_path):
+        import pickle
+
+        with open(load_path, 'rb') as fp:
+            dct_to_load = pickle.load(fp)
+            return cls.from_dict(dct_to_load)
+
+    def to_dict(self):
+        #print('to_dict with numpy (BaseNumPyModel)')
+        dct_to_save = {name: self.__getattribute__(name) for name in self._get_param_names()}
+        partial = False
+        for name in self._get_weight_variables_names():
+            print(name)
+            if(hasattr(self, name)==False):
+                partial=True
+            print(partial)
+        if(partial==False):
+            #dct_to_save.update({name: self.__getattribute__(name).astype(np.float32) for name in self._get_weight_variables_names()})
+            for name in self._get_weight_variables_names():
+                wghts = self.__getattribute__(name).astype(np.float32)
+                #if(name=='W'):
+                #   wghts = np.swapaxes(wghts,1,0)
+                dct_to_save.update({name: wghts.astype(np.float32)})
+        #else:
+        #    dct_to_save.update({name: None for name in self._get_weight_variables_names()})
+        return dct_to_save
+
+    @classmethod
+    def from_dict(cls, dct_to_load):
+        pass
+
+    def _build_model(self, weights=None):
+        pass
+
+    def _initialize_weights(self, weights):
+        pass
+
+    @classmethod
+    def _get_weight_variables_names(cls):
+        pass
+
+    @classmethod
+    def _get_param_names(cls):
+        pass
+
+class BinaryRBM(BaseEstimator, TransformerMixin, BaseNumPyModel):
     """
     This class implements a Binary Restricted Boltzmann machine.
     """
@@ -96,6 +148,105 @@ class BinaryRBM(BaseEstimator, TransformerMixin, BaseModel):
             raise ValueError("Invalid optimization algorithm.")
         return self
 
+    @classmethod
+    def _get_weight_variables_names(cls):
+        return ['W', 'c', 'b']
+        
+    def _initialize_weights(self, weights):
+        #print('initializing weigts with numpy')
+        if weights:
+            for attr_name, value in weights.items():
+                self.__setattr__(attr_name, value)
+            if self.activation_function == 'sigmoid':
+                self._activation_function_class = SigmoidActivationFunction
+            elif self.activation_function == 'tanh':
+                self._activation_function_class = TanhActivationFunction
+            elif self.activation_function == 'relu':
+                self._activation_function_class = ReLUActivationFunction
+            elif self.activation_function == 'relusigmoid':
+                self._activation_function_class = ReLUSigmoidActivationFunction
+            elif self.activation_function == 'selu':
+                self._activation_function_class = SeLUActivationFunction
+            else:
+                raise ValueError("Invalid activation function.")
+        else:
+            if self.activation_function == 'sigmoid':
+                self.W = np.random.randn(self.n_hidden_units, self.n_visible_units) / np.sqrt(self.n_visible_units)
+                self.c = np.random.randn(self.n_hidden_units) / np.sqrt(self.n_visible_units)
+                self.b = np.random.randn(self.n_visible_units) / np.sqrt(self.n_visible_units)
+                self._activation_function_class = SigmoidActivationFunction
+            elif self.activation_function == 'tanh':
+                self.W = np.random.randn(self.n_hidden_units, self.n_visible_units) / np.sqrt(self.n_visible_units)
+                self.c = np.random.randn(self.n_hidden_units) / np.sqrt(self.n_visible_units)
+                self.b = np.random.randn(self.n_visible_units) / np.sqrt(self.n_visible_units)
+                self._activation_function_class = TanhActivationFunction
+            elif self.activation_function == 'relu':
+                self.W = truncnorm.rvs(-0.2, 0.2, size=[self.n_hidden_units, self.n_visible_units]) / np.sqrt(
+                    self.n_visible_units)
+                self.c = np.full(self.n_hidden_units, 0.1) / np.sqrt(self.n_visible_units)
+                self.b = np.full(self.n_visible_units, 0.1) / np.sqrt(self.n_visible_units)
+                self._activation_function_class = ReLUActivationFunction
+            elif self.activation_function == 'relusigmoid':
+                self.W = truncnorm.rvs(-0.2, 0.2, size=[self.n_hidden_units, self.n_visible_units]) / np.sqrt(
+                    self.n_visible_units)
+                self.c = np.full(self.n_hidden_units, 0.1) / np.sqrt(self.n_visible_units)
+                self.b = np.full(self.n_visible_units, 0.1) / np.sqrt(self.n_visible_units)
+                self._activation_function_class = ReLUSigmoidActivationFunction
+            elif self.activation_function == 'selu':
+                self.W = truncnorm.rvs(-0.2, 0.2, size=[self.n_hidden_units, self.n_visible_units]) / np.sqrt(
+                    self.n_visible_units)
+                self.c = np.full(self.n_hidden_units, 0.1) / np.sqrt(self.n_visible_units)
+                self.b = np.full(self.n_visible_units, 0.1) / np.sqrt(self.n_visible_units)
+                self._activation_function_class = SeLUActivationFunction
+            else:
+                raise ValueError("Invalid activation function.")
+
+    def _build_model(self, weights=None):
+        """
+        Builds Numpy model.
+        :return:
+        """
+        # initialize weights and biases
+        self._initialize_weights(weights)
+        
+    @classmethod
+    def _get_param_names(cls):
+        return ['n_hidden_units',
+                'n_visible_units',
+                'activation_function',
+                'optimization_algorithm',
+                'learning_rate',
+                'n_epochs',
+                'contrastive_divergence_iter',
+                'batch_size',
+                'verbose',
+                ] #'_activation_function_class'
+
+    @classmethod
+    def from_dict(cls, dct_to_load):
+        weights = {var_name: dct_to_load.pop(var_name) for var_name in cls._get_weight_variables_names()}
+
+        #_activation_function_class = dct_to_load.pop('_activation_function_class')
+        if '_activation_function_class' in dct_to_load: #Skip this parameter for older format dicts
+            dct_to_load.pop('_activation_function_class')
+        activation_function = dct_to_load.pop('activation_function')
+        n_visible_units = dct_to_load.pop('n_visible_units')
+
+        instance = cls(**dct_to_load)
+        setattr(instance, 'activation_function', activation_function)
+        #setattr(instance, '_activation_function_class', _activation_function_class)
+        setattr(instance, 'n_visible_units', n_visible_units)
+
+        # Initialize RBM parameters
+        #instance._build_model(weights)
+        #sess.run(tf.variables_initializer([getattr(instance, name) for name in cls._get_weight_variables_names()]))
+        #for name in cls._get_weight_variables_names():
+        #    setattr(instance, name, n_visible_units)
+        instance._build_model(weights)
+
+
+        return instance
+
     def transform(self, X):
         """
         Transforms data using the fitted model.
@@ -116,6 +267,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin, BaseModel):
         return self._compute_visible_units_matrix(transformed_data)
 
     def _stochastic_gradient_descent(self, _data):
+        #print('stochastic_gradient_descent with numpy (BinaryRBM)')
         """
         Performs stochastic gradient descend optimization algorithm.
         :param _data: array-like, shape = (n_samples, n_features)
@@ -147,6 +299,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin, BaseModel):
                 error = self._compute_reconstruction_error(data)
                 print(">> Epoch %d finished \tRBM Reconstruction error %f" %
                       (iteration, error))
+                error = self._compute_reconstruction_error(_data)
 
     def _contrastive_divergence(self, vector_visible_units):
         """
@@ -247,7 +400,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin, BaseModel):
         return np.mean(np.sum((data_reconstructed - data) ** 2, 1))
 
 
-class UnsupervisedDBN(BaseEstimator, TransformerMixin, BaseModel):
+class UnsupervisedDBN(BaseEstimator, TransformerMixin, BaseNumPyModel):
     """
     This class implements a unsupervised Deep Belief Network.
     """
@@ -330,13 +483,41 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin, BaseModel):
         for rbm in self.rbm_layers:
             input_data = rbm.transform(input_data)
         return input_data
+        
+    @classmethod
+    def _get_weight_variables_names(cls):
+        return []
+        
+    @classmethod
+    def _get_param_names(cls):
+        return ['hidden_layers_structure',
+                'activation_function',
+                'optimization_algorithm',
+                'learning_rate_rbm',
+                'n_epochs_rbm',
+                'contrastive_divergence_iter',
+                'batch_size',
+                'verbose']
+
+    def to_dict(self):
+        dct_to_save = super(UnsupervisedDBN, self).to_dict()
+        dct_to_save['rbm_layers'] = [rbm.to_dict() for rbm in self.rbm_layers]
+        return dct_to_save
+
+    @classmethod
+    def from_dict(cls, dct_to_load):
+        rbm_layers = dct_to_load.pop('rbm_layers')
+        instance = cls(**dct_to_load)
+        setattr(instance, 'rbm_layers', [instance.rbm_class.from_dict(rbm) for rbm in rbm_layers])
+        return instance
 
 
-class AbstractSupervisedDBN(BaseEstimator, BaseModel):
+class AbstractSupervisedDBN(BaseEstimator, BaseNumPyModel):
     """
     Abstract class for supervised Deep Belief Network.
     """
     __metaclass__ = ABCMeta
+
 
     def __init__(self,
                  unsupervised_dbn_class,
@@ -370,6 +551,15 @@ class AbstractSupervisedDBN(BaseEstimator, BaseModel):
         self.dropout_p = dropout_p
         self.p = 1 - self.dropout_p
         self.verbose = verbose
+        
+    @classmethod
+    def _get_param_names(cls):
+        return ['n_iter_backprop',
+                'l2_regularization',
+                'learning_rate',
+                'batch_size',
+                'dropout_p',
+                'verbose']
 
     def fit(self, X, y=None, pre_train=True):
         """
@@ -427,6 +617,10 @@ class AbstractSupervisedDBN(BaseEstimator, BaseModel):
     @abstractmethod
     def _fine_tuning(self, data, _labels):
         return
+        
+    @classmethod
+    def _get_weight_variables_names(cls):
+        return ['W', 'b']
 
 
 class NumPyAbstractSupervisedDBN(AbstractSupervisedDBN):
@@ -438,6 +632,102 @@ class NumPyAbstractSupervisedDBN(AbstractSupervisedDBN):
     def __init__(self, **kwargs):
         super(NumPyAbstractSupervisedDBN, self).__init__(
             UnsupervisedDBN, **kwargs)
+        
+    def _initialize_weights(self, weights):
+        #print('initialize_weights with numpy (NumPyAbstractSupervisedDBN)')
+        if weights:
+            for attr_name, value in weights.items():
+                self.__setattr__(attr_name, value)
+        else:
+            if self.unsupervised_dbn.activation_function == 'sigmoid':
+                self.W = np.random.randn(self.input_units, self.num_classes) / np.sqrt(self.num_classes)
+                self.b = np.random.randn(self.num_classes) / np.sqrt(self.num_classes)
+                #self.unsupervised_dbn._activation_function_class = SigmoidActivationFunction
+            elif self.unsupervised_dbn.activation_function == 'tanh':
+                self.W = np.random.randn(self.input_units, self.num_classes) / np.sqrt(self.num_classes)
+                self.b = np.random.randn(self.num_classes) / np.sqrt(self.num_classes)
+                #self.unsupervised_dbn._activation_function_class = TanhActivationFunction
+            elif self.unsupervised_dbn.activation_function == 'relu':
+                self.W = truncnorm.rvs(-0.2, 0.2, size=[self.input_units, self.num_classes]) / np.sqrt(
+                    self.num_classes)
+                self.b = np.full(self.num_classes, 0.1) / np.sqrt(self.num_classes)
+                #self.unsupervised_dbn._activation_function_class = ReLUActivationFunction
+            elif self.unsupervised_dbn.activation_function == 'relusigmoid':
+                self.W = truncnorm.rvs(-0.2, 0.2, size=[self.input_units, self.num_classes]) / np.sqrt(
+                    self.num_classes)
+                self.b = np.full(self.num_classes, 0.1) / np.sqrt(self.num_classes)
+                #self.unsupervised_dbn._activation_function_class = ReLUSigmoidActivationFunction
+            elif self.unsupervised_dbn.activation_function == 'selu':
+                self.W = truncnorm.rvs(-0.2, 0.2, size=[self.input_units, self.num_classes]) / np.sqrt(
+                    self.num_classes)
+                self.b = np.full(self.num_classes, 0.1) / np.sqrt(self.num_classes)
+                #self.unsupervised_dbn._activation_function_class = SeLUActivationFunction
+            else:
+                raise ValueError("Invalid activation function.")
+                
+                
+    def to_dict(self):
+        dct_to_save = super(NumPyAbstractSupervisedDBN, self).to_dict()
+        if ('W' in dct_to_save):
+            dct_to_save['W'] = np.swapaxes(dct_to_save['W'],1,0) #Swop final layer for consistant standard format between tf and np implementations
+        dct_to_save['unsupervised_dbn'] = self.unsupervised_dbn.to_dict()
+        if (hasattr(self,'num_classes')):
+            dct_to_save['num_classes'] = self.num_classes
+        else:
+            dct_to_save['num_classes'] = 1 # assume 1 for partially trained DBNs
+        return dct_to_save
+
+    @classmethod
+    def from_dict(cls, dct_to_load):
+        partial = False
+        weights = None
+        #num_classes = None
+        print( cls._get_weight_variables_names())
+        for var_name in cls._get_weight_variables_names():
+            print(var_name)
+            #if(hasattr(dct_to_load,var_name)==False):
+            if not(var_name in dct_to_load):
+                partial = True
+            print(partial)
+        if(partial==False):
+            #weights = {var_name: dct_to_load.pop(var_name) for var_name in cls._get_weight_variables_names()}
+            weights = {}
+            for var_name in cls._get_weight_variables_names():
+                wghts = dct_to_load.pop(var_name)
+                if(var_name=='W'):
+                    wghts = np.swapaxes(wghts,1,0)
+                weights[var_name] = wghts
+        unsupervised_dbn_dct = dct_to_load.pop('unsupervised_dbn')
+        #activation_function = dct_to_load.pop('activation_function')
+        num_classes = dct_to_load.pop('num_classes')
+        print(dct_to_load)
+        instance = cls(**dct_to_load)
+
+        #setattr(instance, 'activation_function', activation_function)
+        setattr(instance, 'unsupervised_dbn', instance.unsupervised_dbn_class.from_dict(unsupervised_dbn_dct))
+        setattr(instance, 'num_classes', num_classes)
+        setattr(instance, 'input_units', instance.unsupervised_dbn.rbm_layers[-1].n_hidden_units)
+        # Initialize RBM parameters
+        instance._build_model(weights)
+        return instance
+        
+        
+    def _build_model(self, weights=None):
+        # weights and biases
+        self._initialize_weights(weights)
+        
+    @classmethod
+    def _get_param_names(cls):
+        return ['n_iter_backprop',
+                'l2_regularization',
+                'learning_rate',
+                'batch_size',
+                'dropout_p',
+                'verbose']
+
+    @classmethod
+    def _get_weight_variables_names(cls):
+        return ['W', 'b']
 
     def _compute_activations(self, sample):
         """
@@ -620,6 +910,24 @@ class SupervisedDBNClassification(NumPyAbstractSupervisedDBN, ClassifierMixin):
     This class implements a Deep Belief Network for classification problems.
     It appends a Softmax Linear Classifier as output layer.
     """
+    
+    def _build_model(self, weights=None):
+        super(SupervisedDBNClassification, self)._build_model(weights)
+        
+    @classmethod
+    def _get_param_names(cls):
+        return super(SupervisedDBNClassification, cls)._get_param_names() + ['label_to_idx_map', 'idx_to_label_map']
+        
+    @classmethod
+    def from_dict(cls, dct_to_load):
+        label_to_idx_map = dct_to_load.pop('label_to_idx_map')
+        idx_to_label_map = dct_to_load.pop('idx_to_label_map')
+
+        instance = super(SupervisedDBNClassification, cls).from_dict(dct_to_load)
+        setattr(instance, 'label_to_idx_map', label_to_idx_map)
+        setattr(instance, 'idx_to_label_map', idx_to_label_map)
+
+        return instance
 
     def _transform_labels_to_network_format(self, labels):
         """
@@ -741,6 +1049,9 @@ class SupervisedDBNRegression(NumPyAbstractSupervisedDBN, RegressorMixin):
     """
     This class implements a Deep Belief Network for regression problems.
     """
+    
+    def _build_model(self, weights=None):
+        super(SupervisedDBNRegression, self)._build_model(weights)
 
     def _transform_labels_to_network_format(self, labels):
         """

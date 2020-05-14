@@ -49,8 +49,19 @@ class BaseTensorFlowModel(BaseModel):
     def to_dict(self):
         dct_to_save = {name: self.__getattribute__(
             name) for name in self._get_param_names()}
-        dct_to_save.update(
-            {name: self.__getattribute__(name).eval(sess) for name in self._get_weight_variables_names()})
+        partial = False
+        for name in self._get_weight_variables_names():
+            print(name)
+            if(hasattr(self, name)==False):
+                partial=True
+            print(partial)
+        if(partial==False):
+            #dct_to_save.update({name: self.__getattribute__(name).eval(sess) for name in self._get_weight_variables_names()})
+            for name in self._get_weight_variables_names():
+                wghts = self.__getattribute__(name).eval(sess)
+                #if(name=='W'):
+                #    wghts = np.swapaxes(wghts,1,0)
+                dct_to_save.update({name: wghts})
         return dct_to_save
 
     @classmethod
@@ -72,7 +83,7 @@ class BaseTensorFlowModel(BaseModel):
         pass
 
 
-class BinaryRBM(BaseBinaryRBM, BaseTensorFlowModel):
+class BinaryRBM(BaseTensorFlowModel, BaseBinaryRBM): #Fixed MRO super problem by changing order of inheritance
     """
     This class implements a Binary Restricted Boltzmann machine based on TensorFlow.
     """
@@ -111,7 +122,7 @@ class BinaryRBM(BaseBinaryRBM, BaseTensorFlowModel):
                 'contrastive_divergence_iter',
                 'batch_size',
                 'verbose',
-                '_activation_function_class']
+                ] #'_activation_function_class'
 
     def _initialize_weights(self, weights):
         if weights:
@@ -233,13 +244,16 @@ class BinaryRBM(BaseBinaryRBM, BaseTensorFlowModel):
         weights = {var_name: dct_to_load.pop(
             var_name) for var_name in cls._get_weight_variables_names()}
 
-        _activation_function_class = dct_to_load.pop(
-            '_activation_function_class')
+       
+        #_activation_function_class = dct_to_load.pop('_activation_function_class')
+        if '_activation_function_class' in dct_to_load: #Skip this parameter for older format dicts
+            dct_to_load.pop('_activation_function_class')
+        activation_function = dct_to_load.pop('activation_function')
         n_visible_units = dct_to_load.pop('n_visible_units')
 
         instance = cls(**dct_to_load)
-        setattr(instance, '_activation_function_class',
-                _activation_function_class)
+        setattr(instance, 'activation_function', activation_function)
+        #setattr(instance, '_activation_function_class', _activation_function_class)
         setattr(instance, 'n_visible_units', n_visible_units)
 
         # Initialize RBM parameters
@@ -256,9 +270,9 @@ class BinaryRBM(BaseBinaryRBM, BaseTensorFlowModel):
         :return:
         """
         for iteration in range(1, self.n_epochs + 1):
-            idx = np.random.permutation(len(_data))
-            data = _data[idx]
-            for batch in batch_generator(self.batch_size, data):
+            #idx = np.random.permutation(len(_data))
+            #data = _data[idx]
+            for batch in batch_generator(self.batch_size, _data):
                 if len(batch) < self.batch_size:
                     # Pad with zeros
                     pad = np.zeros(
@@ -429,15 +443,34 @@ class TensorFlowAbstractSupervisedDBN(BaseTensorFlowModel, BaseAbstractSupervise
 
     def to_dict(self):
         dct_to_save = super(TensorFlowAbstractSupervisedDBN, self).to_dict()
+        #if ('W' in dct_to_save):
+        #    dct_to_save['W'] = np.swapaxes(dct_to_save['W'],1,0)
         dct_to_save['unsupervised_dbn'] = self.unsupervised_dbn.to_dict()
-        dct_to_save['num_classes'] = self.num_classes
+        if(hasattr(self,'numclasses')):
+            dct_to_save['num_classes'] = self.num_classes
+        else:
+            dct_to_save['num_classes'] = 1 #Assume 1 when only partially trained  
         return dct_to_save
 
     @classmethod
     def from_dict(cls, dct_to_load):
-        weights = {var_name: dct_to_load.pop(
-            var_name) for var_name in cls._get_weight_variables_names()}
-        unsupervised_dbn_dct = dct_to_load.pop('unsupervised_dbn')
+        partial = False
+        weights = None
+        num_classes = None
+        for var_name in cls._get_weight_variables_names():
+            print(var_name)
+            if not(var_name in dct_to_load):
+                partial = True
+            print(partial)
+        if(partial==False):
+            #weights = {var_name: dct_to_load.pop(var_name) for var_name in cls._get_weight_variables_names()}
+            weights = {}
+            for var_name in cls._get_weight_variables_names():
+                wghts = dct_to_load.pop(var_name)
+                #if(var_name=='W'):
+                #    wghts = np.swapaxes(wghts,1,0)
+                weights[var_name] = wghts
+        
         num_classes = dct_to_load.pop('num_classes')
 
         unsupervised_dbn_dct = dct_to_load.pop('unsupervised_dbn')
