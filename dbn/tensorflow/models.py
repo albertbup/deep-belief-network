@@ -51,12 +51,11 @@ class BaseTensorFlowModel(BaseModel):
             name) for name in self._get_param_names()}
         partial = False
         for name in self._get_weight_variables_names():
-            print(name)
             if(hasattr(self, name)==False):
                 partial=True
-            print(partial)
         if(partial==False):
-            #dct_to_save.update({name: self.__getattribute__(name).eval(sess) for name in self._get_weight_variables_names()})
+            #dct_to_save.update({name: self.__getattribute__(name).eval(sess) \
+            #    for name in self._get_weight_variables_names()})
             for name in self._get_weight_variables_names():
                 wghts = self.__getattribute__(name).eval(sess)
                 #if(name=='W'):
@@ -82,10 +81,11 @@ class BaseTensorFlowModel(BaseModel):
     def _get_param_names(cls):
         pass
 
-
-class BinaryRBM(BaseTensorFlowModel, BaseBinaryRBM): #Fixed MRO super problem by changing order of inheritance
+#Fixed MRO super problem by changing order of inheritance
+class BinaryRBM(BaseTensorFlowModel, BaseBinaryRBM):
     """
-    This class implements a Binary Restricted Boltzmann machine based on TensorFlow.
+    This class implements a Binary Restricted Boltzmann machine
+    based on TensorFlow.
     """
 
     def fit(self, X):
@@ -145,7 +145,8 @@ class BinaryRBM(BaseTensorFlowModel, BaseBinaryRBM): #Fixed MRO super problem by
             if self.activation_function == 'sigmoid':
                 stddev = 1.0 / np.sqrt(self.n_visible_units)
                 self.W = weight_variable(
-                    tf.random_normal, [self.n_hidden_units, self.n_visible_units], stddev)
+                    tf.random_normal, [self.n_hidden_units, \
+                        self.n_visible_units], stddev)
                 self.c = weight_variable(
                     tf.random_normal, [self.n_hidden_units], stddev)
                 self.b = weight_variable(
@@ -153,27 +154,30 @@ class BinaryRBM(BaseTensorFlowModel, BaseBinaryRBM): #Fixed MRO super problem by
                 self._activation_function_class = tf.nn.sigmoid
             elif self.activation_function == 'tanh':
                 stddev = 0.1 / np.sqrt(self.n_visible_units)
-                self.W = weight_variable(tf.truncated_normal, [self.n_hidden_units, self.n_visible_units], stddev)
+                self.W = weight_variable(tf.truncated_normal, \
+                    [self.n_hidden_units, self.n_visible_units], stddev)
                 self.c = bias_variable(stddev, [self.n_hidden_units])
                 self.b = bias_variable(stddev, [self.n_visible_units])
                 self._activation_function_class = tf.nn.tanh
             elif self.activation_function == 'relu':
                 stddev = 0.1 / np.sqrt(self.n_visible_units)
-                self.W = weight_variable(tf.truncated_normal, [
-                                         self.n_hidden_units, self.n_visible_units], stddev)
+                self.W = weight_variable(tf.truncated_normal, \
+                    [self.n_hidden_units, self.n_visible_units], stddev)
                 self.c = bias_variable(stddev, [self.n_hidden_units])
                 self.b = bias_variable(stddev, [self.n_visible_units])
                 self._activation_function_class = tf.nn.relu
             elif self.activation_function == 'relusigmoid':
                 stddev = 0.1 / np.sqrt(self.n_visible_units)
-                self.W = weight_variable(tf.truncated_normal, [self.n_hidden_units, self.n_visible_units], stddev)
+                self.W = weight_variable(tf.truncated_normal, \
+                    [self.n_hidden_units, self.n_visible_units], stddev)
                 self.c = bias_variable(stddev, [self.n_hidden_units])
                 self.b = bias_variable(stddev, [self.n_visible_units])
                 from .tf_activations import tf_relusigmoid
                 self._activation_function_class = tf_relusigmoid
             elif self.activation_function == 'selu':
                 stddev = 0.1 / np.sqrt(self.n_visible_units)
-                self.W = weight_variable(tf.truncated_normal, [self.n_hidden_units, self.n_visible_units], stddev)
+                self.W = weight_variable(tf.truncated_normal, \
+                    [self.n_hidden_units, self.n_visible_units], stddev)
                 self.c = bias_variable(stddev, [self.n_hidden_units])
                 self.b = bias_variable(stddev, [self.n_visible_units])
                 self._activation_function_class = tf.nn.selu
@@ -192,38 +196,59 @@ class BinaryRBM(BaseTensorFlowModel, BaseBinaryRBM): #Fixed MRO super problem by
         self.visible_units_placeholder = tf.placeholder(
             tf.float32, shape=[None, self.n_visible_units])
         self.compute_hidden_units_op = self._activation_function_class(
-            tf.transpose(tf.matmul(self.W, tf.transpose(self.visible_units_placeholder))) + self.c)
+            tf.transpose(tf.matmul(self.W, tf.transpose( \
+                self.visible_units_placeholder))) + self.c)
         self.hidden_units_placeholder = tf.placeholder(
             tf.float32, shape=[None, self.n_hidden_units])
-        self.compute_visible_units_op = self._activation_function_class(
-            tf.matmul(self.hidden_units_placeholder, self.W) + self.b)
-        self.random_uniform_values = tf.Variable(tf.random_uniform([self.batch_size, self.n_hidden_units]))
-        sample_hidden_units_op = tf.cast(self.random_uniform_values < self.compute_hidden_units_op, tf.float32) #tf.to_float(self.random_uniform_values < self.compute_hidden_units_op)
-        self.data_reconstructed_placeholder = tf.placeholder(tf.float32, shape=[None, self.n_visible_units])
-        self.data_placeholder = tf.placeholder(tf.float32, shape=[None, self.n_visible_units])
-        self.compute_reconstruction_error_op = tf.reduce_mean(tf.reduce_sum((self.data_reconstructed_placeholder - self.data_placeholder)**2,1))
+        self.compute_visible_units_op = \
+            self._activation_function_class(matmul( \
+                self.hidden_units_placeholder, self.W) + self.b)
+        self.random_uniform_values = tf.Variable(tf.random_uniform( \
+            [self.batch_size, self.n_hidden_units]))
+        sample_hidden_units_op = tf.cast(self.random_uniform_values < \
+            self.compute_hidden_units_op, tf.float32)
+            #tf.to_float(self.random_uniform_values < \
+            #    self.compute_hidden_units_op)
+        self.data_reconstructed_placeholder = tf.placeholder( \
+            tf.float32, shape=[None, self.n_visible_units])
+        self.data_placeholder = tf.placeholder(tf.float32, \
+            shape=[None, self.n_visible_units])
+        self.compute_reconstruction_error_op = tf.reduce_mean( \
+            tf.reduce_sum((self.data_reconstructed_placeholder - \
+                self.data_placeholder)**2,1))
         self.random_variables = [self.random_uniform_values]
 
         # Positive gradient
         # Outer product. N is the batch size length.
         # From http://stackoverflow.com/questions/35213787/tensorflow-batch-outer-product
-        positive_gradient_op = tf.matmul(tf.expand_dims(sample_hidden_units_op, 2),  # [N, U, 1]
-                                         tf.expand_dims(self.visible_units_placeholder, 1))  # [N, 1, V]
+        positive_gradient_op = tf.matmul(tf.expand_dims( \
+            sample_hidden_units_op, 2), \ # [N, U, 1]
+                tf.expand_dims( \
+                    self.visible_units_placeholder, 1))  # [N, 1, V]
 
         # Negative gradient
         # Gibbs sampling
         sample_hidden_units_gibbs_step_op = sample_hidden_units_op
         for t in range(self.contrastive_divergence_iter):
             compute_visible_units_op = self._activation_function_class(
-                tf.matmul(sample_hidden_units_gibbs_step_op, self.W) + self.b)
-            compute_hidden_units_gibbs_step_op = self._activation_function_class(
-                tf.transpose(tf.matmul(self.W, tf.transpose(compute_visible_units_op))) + self.c)
-            random_uniform_values = tf.Variable(tf.random_uniform([self.batch_size, self.n_hidden_units]))
-            sample_hidden_units_gibbs_step_op = tf.cast(random_uniform_values < compute_hidden_units_gibbs_step_op, tf.float32) #tf.to_float(random_uniform_values < compute_hidden_units_gibbs_step_op)
+                tf.matmul(sample_hidden_units_gibbs_step_op, self.W) \
+                    + self.b)
+            compute_hidden_units_gibbs_step_op = \
+                self._activation_function_class(tf.transpose(tf.matmul( \
+                    self.W, tf.transpose(compute_visible_units_op))) + \
+                        self.c)
+            random_uniform_values = tf.Variable(tf.random_uniform( \
+                [self.batch_size, self.n_hidden_units]))
+            sample_hidden_units_gibbs_step_op = tf.cast( \
+                random_uniform_values < \
+                    compute_hidden_units_gibbs_step_op, tf.float32)
+                    #tf.to_float(random_uniform_values < \
+                    #    compute_hidden_units_gibbs_step_op)
             self.random_variables.append(random_uniform_values)
 
-        negative_gradient_op = tf.matmul(tf.expand_dims(sample_hidden_units_gibbs_step_op, 2),  # [N, U, 1]
-                                         tf.expand_dims(compute_visible_units_op, 1))  # [N, 1, V]
+        negative_gradient_op = tf.matmul(tf.expand_dims( \
+            sample_hidden_units_gibbs_step_op, 2), \ # [N, U, 1]
+                tf.expand_dims(compute_visible_units_op, 1))  # [N, 1, V]
 
         compute_delta_W = tf.reduce_mean(
             positive_gradient_op - negative_gradient_op, 0)
@@ -244,22 +269,25 @@ class BinaryRBM(BaseTensorFlowModel, BaseBinaryRBM): #Fixed MRO super problem by
         weights = {var_name: dct_to_load.pop(
             var_name) for var_name in cls._get_weight_variables_names()}
 
-       
-        #_activation_function_class = dct_to_load.pop('_activation_function_class')
-        if '_activation_function_class' in dct_to_load: #Skip this parameter for older format dicts
+        #_activation_function_class = \
+        #    dct_to_load.pop('_activation_function_class')
+        if '_activation_function_class' in dct_to_load:
+            #Skip this parameter for older format dicts
             dct_to_load.pop('_activation_function_class')
         activation_function = dct_to_load.pop('activation_function')
         n_visible_units = dct_to_load.pop('n_visible_units')
 
         instance = cls(**dct_to_load)
         setattr(instance, 'activation_function', activation_function)
-        #setattr(instance, '_activation_function_class', _activation_function_class)
+        #setattr(instance, '_activation_function_class', \
+        #    _activation_function_class)
         setattr(instance, 'n_visible_units', n_visible_units)
 
         # Initialize RBM parameters
         instance._build_model(weights)
         sess.run(tf.variables_initializer(
-            [getattr(instance, name) for name in cls._get_weight_variables_names()]))
+            [getattr(instance, name) \
+                for name in cls._get_weight_variables_names()]))
 
         return instance
 
@@ -275,15 +303,17 @@ class BinaryRBM(BaseTensorFlowModel, BaseBinaryRBM): #Fixed MRO super problem by
             for batch in batch_generator(self.batch_size, _data):
                 if len(batch) < self.batch_size:
                     # Pad with zeros
-                    pad = np.zeros(
-                        (self.batch_size - batch.shape[0], batch.shape[1]), dtype=batch.dtype)
+                    pad = np.zeros((self.batch_size - batch.shape[0], \
+                            batch.shape[1]), dtype=batch.dtype)
                     batch = np.vstack((batch, pad))
-                sess.run(tf.variables_initializer(self.random_variables))  # Need to re-sample from uniform distribution
+                sess.run(tf.variables_initializer(self.random_variables)) 
+                #Need to re-sample from uniform distribution
                 sess.run([self.update_W, self.update_b, self.update_c],
                          feed_dict={self.visible_units_placeholder: batch})
             if self.verbose:
                 error = self._compute_reconstruction_error(_data)
-                print(">> Epoch %d finished \tRBM Reconstruction error %f" % (iteration, error))
+                print(">> Epoch %d finished \tRBM Reconstruction error %f" \
+                    % (iteration, error))
 
     def _compute_hidden_units_matrix(self, matrix_visible_units):
         """
@@ -291,8 +321,9 @@ class BinaryRBM(BaseTensorFlowModel, BaseBinaryRBM): #Fixed MRO super problem by
         :param matrix_visible_units: array-like, shape = (n_samples, n_features)
         :return:
         """
-        return sess.run(self.compute_hidden_units_op,
-                        feed_dict={self.visible_units_placeholder: matrix_visible_units})
+        return sess.run(self.compute_hidden_units_op, \
+            feed_dict={self.visible_units_placeholder: \
+                matrix_visible_units})
 
     def _compute_visible_units_matrix(self, matrix_hidden_units):
         """
@@ -300,8 +331,9 @@ class BinaryRBM(BaseTensorFlowModel, BaseBinaryRBM): #Fixed MRO super problem by
         :param matrix_hidden_units: array-like, shape = (n_samples, n_features)
         :return:
         """
-        return sess.run(self.compute_visible_units_op,
-                        feed_dict={self.hidden_units_placeholder: matrix_hidden_units})
+        return sess.run(self.compute_visible_units_op, \
+            feed_dict={self.hidden_units_placeholder: \
+                matrix_hidden_units})
 
     def transform(self, X):
         """
@@ -321,9 +353,8 @@ class BinaryRBM(BaseTensorFlowModel, BaseBinaryRBM): #Fixed MRO super problem by
         :return:
         """
         return self._compute_visible_units_matrix(transformed_data)
-                        
+
     def _compute_reconstruction_error(self, data):
-        #print('compute_reconstruction_error with tf (BinaryRBM)')
         """
         Computes the reconstruction error of the data.
         :param data: array-like, shape = (n_samples, n_features)
@@ -331,8 +362,9 @@ class BinaryRBM(BaseTensorFlowModel, BaseBinaryRBM): #Fixed MRO super problem by
         """
         data_transformed = self.transform(data)
         data_reconstructed = self._reconstruct(data_transformed)
-        return sess.run(self.compute_reconstruction_error_op,
-                        feed_dict={self.data_reconstructed_placeholder: data_reconstructed,self.data_placeholder: data})
+        return sess.run(self.compute_reconstruction_error_op, \
+            feed_dict={self.data_reconstructed_placeholder: \
+                data_reconstructed,self.data_placeholder: data})
 
 
 class UnsupervisedDBN(BaseTensorFlowModel, BaseUnsupervisedDBN):
@@ -361,19 +393,22 @@ class UnsupervisedDBN(BaseTensorFlowModel, BaseUnsupervisedDBN):
 
     def to_dict(self):
         dct_to_save = super(UnsupervisedDBN, self).to_dict()
-        dct_to_save['rbm_layers'] = [rbm.to_dict() for rbm in self.rbm_layers]
+        dct_to_save['rbm_layers'] = [rbm.to_dict() \
+            for rbm in self.rbm_layers]
         return dct_to_save
 
     @classmethod
     def from_dict(cls, dct_to_load):
         rbm_layers = dct_to_load.pop('rbm_layers')
         instance = cls(**dct_to_load)
-        setattr(instance, 'rbm_layers', [
-                instance.rbm_class.from_dict(rbm) for rbm in rbm_layers])
+        setattr(instance, 'rbm_layers', \
+            [instance.rbm_class.from_dict(rbm) \
+                for rbm in rbm_layers])
         return instance
 
-
-class TensorFlowAbstractSupervisedDBN(BaseTensorFlowModel, BaseAbstractSupervisedDBN): #Fixed MRO for tensoflow dict creation versus numpy
+#Fixed MRO for tensoflow dict creation versus numpy
+class TensorFlowAbstractSupervisedDBN(BaseTensorFlowModel, \
+    BaseAbstractSupervisedDBN):
     __metaclass__ = ABCMeta
 
     def __init__(self, **kwargs):
@@ -385,10 +420,11 @@ class TensorFlowAbstractSupervisedDBN(BaseTensorFlowModel, BaseAbstractSupervise
         dct_to_load_2 = cls.unsupervised_dbn.to_dict()
         weights_2 = dct_to_load_2
         return weights_2
-        
+
     def getweights_final(cls):
         dct_to_load = super(TensorFlowAbstractSupervisedDBN, cls).to_dict()
-        weights = {var_name: dct_to_load.pop(var_name) for var_name in ['W', 'b']}
+        weights = {var_name: dct_to_load.pop(var_name) \
+            for var_name in ['W', 'b']}
         return weights
 
     @classmethod
@@ -411,45 +447,53 @@ class TensorFlowAbstractSupervisedDBN(BaseTensorFlowModel, BaseAbstractSupervise
         else:
             if self.unsupervised_dbn.activation_function == 'sigmoid':
                 stddev = 1.0 / np.sqrt(self.input_units)
-                self.W = weight_variable(
-                    tf.random_normal, [self.input_units, self.num_classes], stddev)
+                self.W = weight_variable( \
+                    tf.random_normal, [self.input_units, \
+                        self.num_classes], stddev)
                 self.b = weight_variable(
                     tf.random_normal, [self.num_classes], stddev)
-                self._activation_function_class = tf.nn.sigmoid
+                #self._activation_function_class = tf.nn.sigmoid
             elif self.unsupervised_dbn.activation_function == 'tanh':
                 stddev = 1.0 / np.sqrt(self.input_units)
-                self.W = weight_variable(tf.random_normal, [self.input_units, self.num_classes], stddev)
-                self.b = weight_variable(tf.random_normal, [self.num_classes], stddev)
-                self._activation_function_class = tf.nn.tanh
+                self.W = weight_variable(tf.random_normal, \
+                    [self.input_units, self.num_classes], stddev)
+                self.b = weight_variable(tf.random_normal, \
+                    [self.num_classes], stddev)
+                #self._activation_function_class = tf.nn.tanh
             elif self.unsupervised_dbn.activation_function == 'relu':
                 stddev = 0.1 / np.sqrt(self.input_units)
-                self.W = weight_variable(tf.truncated_normal, [
-                                         self.input_units, self.num_classes], stddev)
+                self.W = weight_variable(tf.truncated_normal, \
+                    [self.input_units, self.num_classes], stddev)
                 self.b = bias_variable(stddev, [self.num_classes])
-                self._activation_function_class = tf.nn.relu
+                #self._activation_function_class = tf.nn.relu
             elif self.unsupervised_dbn.activation_function == 'relusigmoid':
                 stddev = 0.1 / np.sqrt(self.input_units)
-                self.W = weight_variable(tf.truncated_normal, [self.input_units, self.num_classes], stddev)
+                self.W = weight_variable(tf.truncated_normal, \
+                    [self.input_units, self.num_classes], stddev)
                 self.b = bias_variable(stddev, [self.num_classes])
-                from .tf_activations import tf_relusigmoid
-                self._activation_function_class = tf_relusigmoid
+                #from .tf_activations import tf_relusigmoid
+                #self._activation_function_class = tf_relusigmoid
             elif self.unsupervised_dbn.activation_function == 'selu':
                 stddev = 0.1 / np.sqrt(self.input_units)
-                self.W = weight_variable(tf.truncated_normal, [self.input_units, self.num_classes], stddev)
+                self.W = weight_variable(tf.truncated_normal, \
+                    [self.input_units, self.num_classes], stddev)
                 self.b = bias_variable(stddev, [self.num_classes])
-                self._activation_function_class = tf.nn.selu
+                #self._activation_function_class = tf.nn.selu
             else:
                 raise ValueError("Invalid activation function.")
 
     def to_dict(self):
-        dct_to_save = super(TensorFlowAbstractSupervisedDBN, self).to_dict()
+        dct_to_save = super(TensorFlowAbstractSupervisedDBN, \
+            self).to_dict()
         #if ('W' in dct_to_save):
         #    dct_to_save['W'] = np.swapaxes(dct_to_save['W'],1,0)
-        dct_to_save['unsupervised_dbn'] = self.unsupervised_dbn.to_dict()
+        dct_to_save['unsupervised_dbn'] = \
+            self.unsupervised_dbn.to_dict()
         if(hasattr(self,'numclasses')):
             dct_to_save['num_classes'] = self.num_classes
         else:
-            dct_to_save['num_classes'] = 1 #Assume 1 when only partially trained  
+            dct_to_save['num_classes'] = 1
+            #Assume 1 when only partially trained  
         return dct_to_save
 
     @classmethod
@@ -458,54 +502,60 @@ class TensorFlowAbstractSupervisedDBN(BaseTensorFlowModel, BaseAbstractSupervise
         weights = None
         num_classes = None
         for var_name in cls._get_weight_variables_names():
-            print(var_name)
             if not(var_name in dct_to_load):
                 partial = True
-            print(partial)
         if(partial==False):
-            #weights = {var_name: dct_to_load.pop(var_name) for var_name in cls._get_weight_variables_names()}
+            #weights = {var_name: dct_to_load.pop(var_name) \
+            #    for var_name in cls._get_weight_variables_names()}
             weights = {}
             for var_name in cls._get_weight_variables_names():
                 wghts = dct_to_load.pop(var_name)
                 #if(var_name=='W'):
                 #    wghts = np.swapaxes(wghts,1,0)
                 weights[var_name] = wghts
-        
+
         num_classes = dct_to_load.pop('num_classes')
 
         unsupervised_dbn_dct = dct_to_load.pop('unsupervised_dbn')
         instance = cls(**dct_to_load)
 
-        setattr(instance, 'unsupervised_dbn',
-                instance.unsupervised_dbn_class.from_dict(unsupervised_dbn_dct))
+        setattr(instance, 'unsupervised_dbn', \
+            instance.unsupervised_dbn_class.from_dict( \
+                unsupervised_dbn_dct))
         setattr(instance, 'num_classes', num_classes)
 
         # Initialize RBM parameters
         instance._build_model(weights)
-        sess.run(tf.variables_initializer(
-            [getattr(instance, name) for name in cls._get_weight_variables_names()]))
+        sess.run(tf.variables_initializer( \
+            [getattr(instance, name) \
+                for name in cls._get_weight_variables_names()]))
         return instance
 
     def _build_model(self, weights=None):
-        self.visible_units_placeholder = self.unsupervised_dbn.rbm_layers[
-            0].visible_units_placeholder
+        self.visible_units_placeholder = \
+            self.unsupervised_dbn.rbm_layers[ \
+                0].visible_units_placeholder
         keep_prob = tf.placeholder(tf.float32)
-        visible_units_placeholder_drop = tf.nn.dropout(self.visible_units_placeholder, rate=(1-keep_prob))
+        visible_units_placeholder_drop = tf.nn.dropout( \
+            self.visible_units_placeholder, rate=(1-keep_prob))
         self.keep_prob_placeholders = [keep_prob]
 
         # Define tensorflow operation for a forward pass
         rbm_activation = visible_units_placeholder_drop
         for rbm in self.unsupervised_dbn.rbm_layers:
-            rbm_activation = rbm._activation_function_class(
-                tf.transpose(tf.matmul(rbm.W, tf.transpose(rbm_activation))) + rbm.c)
+            rbm_activation = rbm._activation_function_class( \
+                tf.transpose(tf.matmul(rbm.W, tf.transpose( \
+                    rbm_activation))) + rbm.c)
             keep_prob = tf.placeholder(tf.float32)
             self.keep_prob_placeholders.append(keep_prob)
-            rbm_activation = tf.nn.dropout(rbm_activation, rate=(1-keep_prob))
+            rbm_activation = tf.nn.dropout(rbm_activation, \
+                rate=(1-keep_prob))
 
         self.transform_op = rbm_activation
 
         # Set the input units to BP layer
-        self.input_units = self.unsupervised_dbn.rbm_layers[-1].n_hidden_units
+        self.input_units = \
+            self.unsupervised_dbn.rbm_layers[-1].n_hidden_units
 
         # weights and biases
         self._initialize_weights(weights)
@@ -518,7 +568,8 @@ class TensorFlowAbstractSupervisedDBN(BaseTensorFlowModel, BaseAbstractSupervise
 
         # operations
         self.y = tf.matmul(self.transform_op, self.W) + self.b
-        self.y_ = tf.placeholder(tf.float32, shape=[None, self.num_classes])
+        self.y_ = tf.placeholder(tf.float32, shape=[None, \
+            self.num_classes])
         self.train_step = None
         self.cost_function = None
         self.output = None
@@ -541,28 +592,30 @@ class TensorFlowAbstractSupervisedDBN(BaseTensorFlowModel, BaseAbstractSupervise
 
     def _stochastic_gradient_descent(self, data, labels):
         for iteration in range(self.n_iter_backprop):
-            for batch_data, batch_labels in batch_generator(self.batch_size, data, labels):
-                feed_dict = {self.visible_units_placeholder: batch_data,
-                             self.y_: batch_labels}
-                feed_dict.update(
-                    {placeholder: self.p for placeholder in self.keep_prob_placeholders})
+            for batch_data, batch_labels in batch_generator( \
+                self.batch_size, data, labels):
+                feed_dict = {self.visible_units_placeholder: \
+                    batch_data, self.y_: batch_labels}
+                feed_dict.update({placeholder: self.p \
+                    for placeholder in self.keep_prob_placeholders})
                 sess.run(self.train_step, feed_dict=feed_dict)
 
             if self.verbose:
                 feed_dict = {
                     self.visible_units_placeholder: data, self.y_: labels}
-                feed_dict.update(
-                    {placeholder: 1.0 for placeholder in self.keep_prob_placeholders})
+                feed_dict.update( \
+                    {placeholder: 1.0 \
+                        for placeholder in self.keep_prob_placeholders})
                 error = sess.run(self.cost_function, feed_dict=feed_dict)
                 print(">> Epoch %d finished \tANN training loss %.10f" %
                       (iteration, error))
 
     def transform(self, X):
         feed_dict = {self.visible_units_placeholder: X}
-        feed_dict.update(
-            {placeholder: 1.0 for placeholder in self.keep_prob_placeholders})
-        return sess.run(self.transform_op,
-                        feed_dict=feed_dict)
+        feed_dict.update({placeholder: 1.0 \
+            for placeholder in self.keep_prob_placeholders})
+        return sess.run(self.transform_op, \
+            feed_dict=feed_dict)
 
     def predict(self, X):
         """
@@ -582,7 +635,8 @@ class TensorFlowAbstractSupervisedDBN(BaseTensorFlowModel, BaseAbstractSupervise
         return sess.run(self.output, feed_dict=feed_dict)
 
 
-class SupervisedDBNClassification(TensorFlowAbstractSupervisedDBN, ClassifierMixin):
+class SupervisedDBNClassification(TensorFlowAbstractSupervisedDBN, \
+    ClassifierMixin):
     """
     This class implements a Deep Belief Network for classification problems.
     It appends a Softmax Linear Classifier as output layer.
@@ -591,13 +645,16 @@ class SupervisedDBNClassification(TensorFlowAbstractSupervisedDBN, ClassifierMix
     def _build_model(self, weights=None):
         super(SupervisedDBNClassification, self)._build_model(weights)
         self.output = tf.nn.softmax(self.y)
-        self.cost_function = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(
-            logits=self.y, labels=tf.stop_gradient(self.y_)))
+        self.cost_function = tf.reduce_mean( \
+            tf.nn.softmax_cross_entropy_with_logits_v2( \
+                logits=self.y, labels=tf.stop_gradient(self.y_)))
         self.train_step = self.optimizer.minimize(self.cost_function)
 
     @classmethod
     def _get_param_names(cls):
-        return super(SupervisedDBNClassification, cls)._get_param_names() + ['label_to_idx_map', 'idx_to_label_map']
+        return super( \
+            SupervisedDBNClassification, cls)._get_param_names() + \
+                 ['label_to_idx_map', 'idx_to_label_map']
 
     @classmethod
     def from_dict(cls, dct_to_load):
@@ -633,16 +690,21 @@ class SupervisedDBNClassification(TensorFlowAbstractSupervisedDBN, ClassifierMix
 
     def predict_proba(self, X):
         """
-        Predicts probability distribution of classes for each sample in the given data.
+        Predicts probability distribution of classes for each
+        sample in the given data.
         :param X: array-like, shape = (n_samples, n_features)
         :return:
         """
-        return super(SupervisedDBNClassification, self)._compute_output_units_matrix(X)
+        return super( \
+            SupervisedDBNClassification, \
+                self)._compute_output_units_matrix(X)
 
     def predict_proba_dict(self, X):
         """
-        Predicts probability distribution of classes for each sample in the given data.
-        Returns a list of dictionaries, one per sample. Each dict contains {label_1: prob_1, ..., label_j: prob_j}
+        Predicts probability distribution of classes for each
+        sample in the given data.
+        Returns a list of dictionaries, one per sample.
+        Each dict contains {label_1: prob_1, ..., label_j: prob_j}
         :param X: array-like, shape = (n_samples, n_features)
         :return:
         """
@@ -658,7 +720,8 @@ class SupervisedDBNClassification(TensorFlowAbstractSupervisedDBN, ClassifierMix
             # value : predicted probability
             dict_prob = {}
             for j in range(num_of_labels):
-                dict_prob[self.idx_to_label_map[j]] = predicted_probs[i][j]
+                dict_prob[self.idx_to_label_map[j]] = \
+                    predicted_probs[i][j]
             result.append(dict_prob)
 
         return result
@@ -667,16 +730,16 @@ class SupervisedDBNClassification(TensorFlowAbstractSupervisedDBN, ClassifierMix
         return len(np.unique(labels))
 
 
-class SupervisedDBNRegression(TensorFlowAbstractSupervisedDBN, RegressorMixin):
+class SupervisedDBNRegression(TensorFlowAbstractSupervisedDBN, \
+    RegressorMixin):
     """
     This class implements a Deep Belief Network for regression problems in TensorFlow.
     """
     def getweights_dbn(self):
         return super(SupervisedDBNRegression, self).getweights_dbn()
-    
+
     def getweights_final(self):
-        return super(SupervisedDBNRegression, self).getweights_final()
-        
+        return super(SupervisedDBNRegression, self).getweights_final(
 
     def _build_model(self, weights=None):
         super(SupervisedDBNRegression, self)._build_model(weights)
@@ -687,7 +750,8 @@ class SupervisedDBNRegression(TensorFlowAbstractSupervisedDBN, RegressorMixin):
 
     def _transform_labels_to_network_format(self, labels):
         """
-        Returns the same labels since regression case does not need to convert anything.
+        Returns the same labels since regression case does not
+        need to convert anything.
         :param labels: array-like, shape = (n_samples, targets)
         :return:
         """
@@ -695,7 +759,9 @@ class SupervisedDBNRegression(TensorFlowAbstractSupervisedDBN, RegressorMixin):
         return labels
 
     def _compute_output_units_matrix(self, matrix_visible_units):
-        return super(SupervisedDBNRegression, self)._compute_output_units_matrix(matrix_visible_units)
+        return super( \
+            SupervisedDBNRegression, \
+                self)._compute_output_units_matrix(matrix_visible_units)
 
     def _determine_num_output_neurons(self, labels):
         if len(labels.shape) == 1:

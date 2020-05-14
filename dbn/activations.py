@@ -58,7 +58,7 @@ class ReLUActivationFunction(ActivationFunction):
         :return:
         """
         return (x > 0).astype(int)
-        
+
 class ReLUSigmoidActivationFunction(ActivationFunction):
     @classmethod
     def function(cls, x):

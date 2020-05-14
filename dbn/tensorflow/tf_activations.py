@@ -49,29 +49,9 @@ def py_func(func, inp, Tout, stateful=True, name=None, grad=None):
     with g.gradient_override_map({"PyFunc": rnd_name}):
 
         return tf.py_function(func=func, inp=inp, Tout=Tout, name=name)#stateful=False
-        
+
 def relusigmoidgrad(op, grad):
     '''gradient function'''
     x = op.inputs[0]
     n_gr = tf_d_relusigmoid(x)
-    return grad * n_gr  
-
-
-########################################################################
-#final test the function
-########################################################################
-#init all and start session:
-#sess = tf.InteractiveSession()
-#sess.run(tf.global_variables_initializer())
-
-#init data
-#x = tf.constant([0.2,-0.7,1.2,-1.7])
-#y = tf_relusigmoid(x)
-#print tensorflow functions
-#print('tensorflow functions:')
-#print(x.eval(), y.eval(), tf.gradients(y, [x])[0].eval())
-
-
-#optional: print numpy functions
-#x2 = np.array([0.2,-0.7,1.2,-1.7]).astype(np.float32)
-#print(x2, np_relusigmoid(x2), np_d_relusigmoid(x2))
+    return grad * n_gr
