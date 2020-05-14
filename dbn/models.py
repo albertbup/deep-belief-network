@@ -4,7 +4,7 @@ import numpy as np
 from scipy.stats import truncnorm
 from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin, RegressorMixin
 
-from .activations import SigmoidActivationFunction, ReLUActivationFunction
+from .activations import SigmoidActivationFunction, ReLUActivationFunction, SeLUActivationFunction, TanhActivationFunction, ReLUSigmoidActivationFunction
 from .utils import batch_generator
 
 
@@ -52,6 +52,7 @@ class BinaryRBM(BaseEstimator, TransformerMixin, BaseModel):
         :param X: array-like, shape = (n_samples, n_features)
         :return:
         """
+        # Initialize RBM parameters
         self.n_visible_units = X.shape[1]
         if self.activation_function == 'sigmoid':
             self.W = np.random.randn(
@@ -61,6 +62,11 @@ class BinaryRBM(BaseEstimator, TransformerMixin, BaseModel):
             self.b = np.random.randn(
                 self.n_visible_units) / np.sqrt(self.n_visible_units)
             self._activation_function_class = SigmoidActivationFunction
+        elif self.activation_function == 'tanh':
+            self.W = np.random.randn(self.n_hidden_units, self.n_visible_units) / np.sqrt(self.n_visible_units)
+            self.c = np.random.randn(self.n_hidden_units) / np.sqrt(self.n_visible_units)
+            self.b = np.random.randn(self.n_visible_units) / np.sqrt(self.n_visible_units)
+            self._activation_function_class = TanhActivationFunction
         elif self.activation_function == 'relu':
             self.W = truncnorm.rvs(-0.2, 0.2, size=[self.n_hidden_units, self.n_visible_units]) / np.sqrt(
                 self.n_visible_units)
@@ -69,6 +75,18 @@ class BinaryRBM(BaseEstimator, TransformerMixin, BaseModel):
             self.b = np.full(self.n_visible_units, 0.1) / \
                 np.sqrt(self.n_visible_units)
             self._activation_function_class = ReLUActivationFunction
+        elif self.activation_function == 'relusigmoid':
+            self.W = truncnorm.rvs(-0.2, 0.2, size=[self.n_hidden_units, self.n_visible_units]) / np.sqrt(
+                self.n_visible_units)
+            self.c = np.full(self.n_hidden_units, 0.1) / np.sqrt(self.n_visible_units)
+            self.b = np.full(self.n_visible_units, 0.1) / np.sqrt(self.n_visible_units)
+            self._activation_function_class = ReLUSigmoidActivationFunction
+        elif self.activation_function == 'selu':
+            self.W = truncnorm.rvs(-0.2, 0.2, size=[self.n_hidden_units, self.n_visible_units]) / np.sqrt(
+                self.n_visible_units)
+            self.c = np.full(self.n_hidden_units, 0.1) / np.sqrt(self.n_visible_units)
+            self.b = np.full(self.n_visible_units, 0.1) / np.sqrt(self.n_visible_units)
+            self._activation_function_class = SeLUActivationFunction
         else:
             raise ValueError("Invalid activation function.")
 
