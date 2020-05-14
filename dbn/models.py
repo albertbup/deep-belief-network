@@ -632,6 +632,17 @@ class NumPyAbstractSupervisedDBN(AbstractSupervisedDBN):
     def __init__(self, **kwargs):
         super(NumPyAbstractSupervisedDBN, self).__init__(
             UnsupervisedDBN, **kwargs)
+            
+    def getweights_dbn(cls):
+        dct_to_load = super(NumPyAbstractSupervisedDBN, cls).to_dict()
+        dct_to_load_2 = cls.unsupervised_dbn.to_dict()
+        weights_2 = dct_to_load_2
+        return weights_2
+        
+    def getweights_final(cls):
+        dct_to_load = super(NumPyAbstractSupervisedDBN, cls).to_dict()
+        weights = {var_name: dct_to_load.pop(var_name) for var_name in ['W', 'b']}
+        return weights
         
     def _initialize_weights(self, weights):
         #print('initialize_weights with numpy (NumPyAbstractSupervisedDBN)')
@@ -1049,6 +1060,11 @@ class SupervisedDBNRegression(NumPyAbstractSupervisedDBN, RegressorMixin):
     """
     This class implements a Deep Belief Network for regression problems.
     """
+    def getweights_dbn(self):
+        return super(SupervisedDBNRegression, self).getweights_dbn()
+    
+    def getweights_final(self):
+        return super(SupervisedDBNRegression, self).getweights_final()
     
     def _build_model(self, weights=None):
         super(SupervisedDBNRegression, self)._build_model(weights)
