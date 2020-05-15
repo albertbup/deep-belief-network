@@ -222,9 +222,11 @@ class BinaryRBM(BaseTensorFlowModel, BaseBinaryRBM):
         # Outer product. N is the batch size length.
         # From http://stackoverflow.com/questions/35213787/tensorflow-batch-outer-product
         positive_gradient_op = tf.matmul(tf.expand_dims( \
-            sample_hidden_units_op, 2), \ # [N, U, 1]
+            # [N, U, 1]
+            sample_hidden_units_op, 2), \
                 tf.expand_dims( \
-                    self.visible_units_placeholder, 1))  # [N, 1, V]
+                    self.visible_units_placeholder, 1))
+                    # [N, 1, V]
 
         # Negative gradient
         # Gibbs sampling
@@ -247,8 +249,10 @@ class BinaryRBM(BaseTensorFlowModel, BaseBinaryRBM):
             self.random_variables.append(random_uniform_values)
 
         negative_gradient_op = tf.matmul(tf.expand_dims( \
-            sample_hidden_units_gibbs_step_op, 2), \ # [N, U, 1]
-                tf.expand_dims(compute_visible_units_op, 1))  # [N, 1, V]
+            # [N, U, 1]
+            sample_hidden_units_gibbs_step_op, 2), \
+                tf.expand_dims(compute_visible_units_op, 1))
+                # [N, 1, V]
 
         compute_delta_W = tf.reduce_mean(
             positive_gradient_op - negative_gradient_op, 0)
@@ -739,7 +743,7 @@ class SupervisedDBNRegression(TensorFlowAbstractSupervisedDBN, \
         return super(SupervisedDBNRegression, self).getweights_dbn()
 
     def getweights_final(self):
-        return super(SupervisedDBNRegression, self).getweights_final(
+        return super(SupervisedDBNRegression, self).getweights_final()
 
     def _build_model(self, weights=None):
         super(SupervisedDBNRegression, self)._build_model(weights)
