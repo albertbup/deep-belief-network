@@ -463,8 +463,48 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin, BaseNumPyModel):
         # Initialize rbm layers
         self.rbm_layers = list()
         if type(self.learning_rate_rbm) == list and len( \
+            self.learning_rate_rbm) > 1 and type( \
+                self.learning_rate_rbm) == list and len( \
+                    self.learning_rate_rbm) > 1 and type( \
+                        self.n_epochs_rbm) == list and len( \
+                            self.n_epochs_rbm) > 1:
+            # Set different learning_rate and activation for each layer
+            mark = 0
+            for n_hidden_units in self.hidden_layers_structure:
+                rbm = self.rbm_class(
+                    n_hidden_units=n_hidden_units,
+                    activation_function=self.activation_function[mark],
+                    optimization_algorithm=self.optimization_algorithm,
+                    learning_rate=self.learning_rate_rbm[mark],
+                    n_epochs=self.n_epochs_rbm[mark],
+                    contrastive_divergence_iter= \
+                        self.contrastive_divergence_iter,
+                    batch_size=self.batch_size,
+                    verbose=self.verbose)
+                mark += 1
+                self.rbm_layers.append(rbm)
+        elif type(self.learning_rate_rbm) == list and len( \
+            self.learning_rate_rbm) > 1 and type( \
+                self.activation_function) == list and len( \
+                    self.activation_function) > 1:
+            # Set different learning_rate and activation for each layer
+            mark = 0
+            for n_hidden_units in self.hidden_layers_structure:
+                rbm = self.rbm_class(
+                    n_hidden_units=n_hidden_units,
+                    activation_function=self.activation_function[mark],
+                    optimization_algorithm=self.optimization_algorithm,
+                    learning_rate=self.learning_rate_rbm[mark],
+                    n_epochs=self.n_epochs_rbm,
+                    contrastive_divergence_iter= \
+                        self.contrastive_divergence_iter,
+                    batch_size=self.batch_size,
+                    verbose=self.verbose)
+                mark += 1
+                self.rbm_layers.append(rbm)
+        elif type(self.learning_rate_rbm) == list and len( \
             self.learning_rate_rbm) > 1:
-            # Set diffreent learning_rate for each layers
+            # Set diffreent learning_rate for each layer
             mark = 0
             for n_hidden_units in self.hidden_layers_structure:
                 rbm = self.rbm_class(
@@ -472,6 +512,23 @@ class UnsupervisedDBN(BaseEstimator, TransformerMixin, BaseNumPyModel):
                     activation_function=self.activation_function,
                     optimization_algorithm=self.optimization_algorithm,
                     learning_rate=self.learning_rate_rbm[mark],
+                    n_epochs=self.n_epochs_rbm,
+                    contrastive_divergence_iter= \
+                        self.contrastive_divergence_iter,
+                    batch_size=self.batch_size,
+                    verbose=self.verbose)
+                mark += 1
+                self.rbm_layers.append(rbm)
+        elif type(self.activation_function) == list and len( \
+            self.activation_function) > 1:
+            # Set different activation for each layer
+            mark = 0
+            for n_hidden_units in self.hidden_layers_structure:
+                rbm = self.rbm_class(
+                    n_hidden_units=n_hidden_units,
+                    activation_function=self.activation_function[mark],
+                    optimization_algorithm=self.optimization_algorithm,
+                    learning_rate=self.learning_rate_rbm,
                     n_epochs=self.n_epochs_rbm,
                     contrastive_divergence_iter= \
                         self.contrastive_divergence_iter,
