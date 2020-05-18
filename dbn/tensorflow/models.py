@@ -420,10 +420,9 @@ class TensorFlowAbstractSupervisedDBN(BaseTensorFlowModel, \
             UnsupervisedDBN, **kwargs)
 
     def getweights_dbn(cls):
-        dct_to_load = super(TensorFlowAbstractSupervisedDBN, cls).to_dict()
-        dct_to_load_2 = cls.unsupervised_dbn.to_dict()
-        weights_2 = dct_to_load_2
-        return weights_2
+        dct_to_load = cls.unsupervised_dbn.to_dict()
+        weights_dbn = dct_to_load['rbm_layers']
+        return weights_dbn
 
     def getweights_final(cls):
         dct_to_load = super(TensorFlowAbstractSupervisedDBN, cls).to_dict()
@@ -646,6 +645,11 @@ class SupervisedDBNClassification(TensorFlowAbstractSupervisedDBN, \
     This class implements a Deep Belief Network for classification problems.
     It appends a Softmax Linear Classifier as output layer.
     """
+    def getweights_dbn(self):
+        return super(SupervisedDBNClassification, self).getweights_dbn()
+
+    def getweights_final(self):
+        return super(SupervisedDBNClassification, self).getweights_final()
 
     def _build_model(self, weights=None):
         super(SupervisedDBNClassification, self)._build_model(weights)
@@ -760,7 +764,8 @@ class SupervisedDBNRegression(TensorFlowAbstractSupervisedDBN, \
         :param labels: array-like, shape = (n_samples, targets)
         :return:
         """
-        labels = np.squeeze(labels, axis=(2,)) #Ensure correct format
+        if(labels.ndim>2):
+            labels = np.squeeze(labels, axis=(2,)) #Ensure correct format
         return labels
 
     def _compute_output_units_matrix(self, matrix_visible_units):
