@@ -740,7 +740,12 @@ class NumPyAbstractSupervisedDBN(AbstractSupervisedDBN):
             for attr_name, value in weights.items():
                 self.__setattr__(attr_name, value)
         else:
-            if self.unsupervised_dbn.activation_function == 'sigmoid':
+            if type(self.unsupervised_dbn.activation_function) == list:
+                self.W = np.random.randn(self.input_units, \
+                    self.num_classes) / np.sqrt(self.num_classes)
+                self.b = np.random.randn(self.num_classes) / \
+                    np.sqrt(self.num_classes)
+            elif self.unsupervised_dbn.activation_function == 'sigmoid':
                 self.W = np.random.randn(self.input_units, \
                     self.num_classes) / np.sqrt(self.num_classes)
                 self.b = np.random.randn(self.num_classes) / \

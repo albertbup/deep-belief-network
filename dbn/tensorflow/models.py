@@ -201,7 +201,7 @@ class BinaryRBM(BaseTensorFlowModel, BaseBinaryRBM):
         self.hidden_units_placeholder = tf.placeholder(
             tf.float32, shape=[None, self.n_hidden_units])
         self.compute_visible_units_op = \
-            self._activation_function_class(matmul( \
+            self._activation_function_class(tf.matmul( \
                 self.hidden_units_placeholder, self.W) + self.b)
         self.random_uniform_values = tf.Variable(tf.random_uniform( \
             [self.batch_size, self.n_hidden_units]))
@@ -449,40 +449,41 @@ class TensorFlowAbstractSupervisedDBN(BaseTensorFlowModel, \
             for attr_name, value in weights.items():
                 self.__setattr__(attr_name, tf.Variable(value))
         else:
-            if self.unsupervised_dbn.activation_function == 'sigmoid':
+            if type(self.unsupervised_dbn.activation_function) == list:
                 stddev = 1.0 / np.sqrt(self.input_units)
                 self.W = weight_variable( \
                     tf.random_normal, [self.input_units, \
                         self.num_classes], stddev)
                 self.b = weight_variable(
                     tf.random_normal, [self.num_classes], stddev)
-                #self._activation_function_class = tf.nn.sigmoid
+            elif self.unsupervised_dbn.activation_function == 'sigmoid':
+                stddev = 1.0 / np.sqrt(self.input_units)
+                self.W = weight_variable( \
+                    tf.random_normal, [self.input_units, \
+                        self.num_classes], stddev)
+                self.b = weight_variable(
+                    tf.random_normal, [self.num_classes], stddev)
             elif self.unsupervised_dbn.activation_function == 'tanh':
                 stddev = 1.0 / np.sqrt(self.input_units)
                 self.W = weight_variable(tf.random_normal, \
                     [self.input_units, self.num_classes], stddev)
                 self.b = weight_variable(tf.random_normal, \
                     [self.num_classes], stddev)
-                #self._activation_function_class = tf.nn.tanh
             elif self.unsupervised_dbn.activation_function == 'relu':
                 stddev = 0.1 / np.sqrt(self.input_units)
                 self.W = weight_variable(tf.truncated_normal, \
                     [self.input_units, self.num_classes], stddev)
                 self.b = bias_variable(stddev, [self.num_classes])
-                #self._activation_function_class = tf.nn.relu
             elif self.unsupervised_dbn.activation_function == 'relusigmoid':
                 stddev = 0.1 / np.sqrt(self.input_units)
                 self.W = weight_variable(tf.truncated_normal, \
                     [self.input_units, self.num_classes], stddev)
                 self.b = bias_variable(stddev, [self.num_classes])
-                #from .tf_activations import tf_relusigmoid
-                #self._activation_function_class = tf_relusigmoid
             elif self.unsupervised_dbn.activation_function == 'selu':
                 stddev = 0.1 / np.sqrt(self.input_units)
                 self.W = weight_variable(tf.truncated_normal, \
                     [self.input_units, self.num_classes], stddev)
                 self.b = bias_variable(stddev, [self.num_classes])
-                #self._activation_function_class = tf.nn.selu
             else:
                 raise ValueError("Invalid activation function.")
 

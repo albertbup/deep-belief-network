@@ -76,7 +76,7 @@ class ReLUSigmoidActivationFunction(ActivationFunction):
         :param x: array-like, shape = (n_features, )
         :return:
         """
-        return (x > 0).astype(int)*2*(x * (1 - x))
+        return np.multiply((x > 0).astype(int),2*(x * (1 - x)))
 
 #https://github.com/ZHANG-SHI-CHANG/Selu/blob/master/selu_tensorflow.py
 class SeLUActivationFunction(ActivationFunction):
