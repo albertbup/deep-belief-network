@@ -30,6 +30,13 @@ class BaseNumPyModel(BaseModel):
 
         with open(save_path, 'wb') as fp:
             pickle.dump(self.to_dict(), fp)
+            
+    def save_old(self, save_path):
+        super(BaseNumPyModel, self).save(save_path)
+        
+    @classmethod
+    def load_old(cls, load_path):
+        super(BaseNumPyModel, self).load_old(load_path)
 
     @classmethod
     def load(cls, load_path):
@@ -724,10 +731,9 @@ class NumPyAbstractSupervisedDBN(AbstractSupervisedDBN):
             UnsupervisedDBN, **kwargs)
 
     def getweights_dbn(cls):
-        dct_to_load = super(NumPyAbstractSupervisedDBN, cls).to_dict()
-        dct_to_load_2 = cls.unsupervised_dbn.to_dict()
-        weights_2 = dct_to_load_2
-        return weights_2
+        dct_to_load = cls.unsupervised_dbn.to_dict()
+        weights_dbn = dct_to_load['rbm_layers']
+        return weights_dbn
 
     def getweights_final(cls):
         dct_to_load = super(NumPyAbstractSupervisedDBN, cls).to_dict()
@@ -1029,6 +1035,11 @@ class SupervisedDBNClassification(NumPyAbstractSupervisedDBN, \
     This class implements a Deep Belief Network for classification problems.
     It appends a Softmax Linear Classifier as output layer.
     """
+    def getweights_dbn(self):
+        return super(SupervisedDBNClassification, self).getweights_dbn()
+
+    def getweights_final(self):
+        return super(SupervisedDBNClassification, self).getweights_final()
 
     def _build_model(self, weights=None):
         super(SupervisedDBNClassification, self)._build_model(weights)
