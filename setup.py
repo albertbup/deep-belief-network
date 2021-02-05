@@ -6,7 +6,7 @@ with open('requirements.txt') as fp:
     requirements = fp.read().splitlines()
 
 setup(name='deep-belief-network',
-      version='1.0.4',
+      version='1.0.5',
       description='Python implementation of Deep Belief Networks',
       packages=['dbn', 'dbn.tensorflow'],
       install_requires=requirements,
