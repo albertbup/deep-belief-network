@@ -5,9 +5,7 @@ A simple, clean, fast Python implementation of Deep Belief Networks based on bin
 > Fischer, Asja, and Christian Igel. "Training restricted Boltzmann machines: an introduction." Pattern Recognition 47.1 (2014): 25-39.
 
 ## Overview
-This project works on Python 3.6 and follows the [scikit-learn](http://scikit-learn.org) API conventions.
-
-This project includes two implementations: one is built on top of TensorFlow while the other one just uses NumPy. To decide which one to use is as easy as importing the classes from the correct module: ```dbn.tensorflow``` for TensorFlow or  ```dbn``` for NumPy.
+This project works on Python 3.6 and follows the [scikit-learn](http://scikit-learn.org) API conventions. The code includes two implementations: one is built on top of TensorFlow while the other one just uses NumPy. To decide which one to use is as easy as importing the classes from the correct module: ```dbn.tensorflow``` for TensorFlow or  ```dbn``` for NumPy.
 ```python
 import numpy as np
 
