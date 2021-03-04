@@ -54,7 +54,12 @@ Clone this repository:
     
     git clone https://github.com/albertbup/deep-belief-network.git
 
-Next, build the docker image (you'll need to have [docker installed](https://docs.docker.com/get-docker/) in your system):
+and go to the root folder:
+    
+    cd deep-belief-network
+    
+#### The docker way:
+Build the docker image (you'll need to have [docker installed](https://docs.docker.com/get-docker/) in your system):
 
     docker build --tag albertbup/deep-belief-network:1.0.5 .
 
@@ -62,6 +67,18 @@ Cool, let's go inside the container and run an example:
     
     docker run --rm -it -v ${PWD}:/code albertbup/deep-belief-network:1.0.5 bash
     # Now within the container...
+    python example_classification.py
+
+#### The virtualenv way:
+Create a [virtual environment](https://virtualenv.pypa.io/en/latest/index.html) for **Python 3.6** and [activate](https://virtualenv.pypa.io/en/latest/user_guide.html#activators) it.
+
+Next, install requirements:
+  
+    pip install -r requirements.txt
+    
+Finally, run an example:
+    
+    # Now within the virtual environment...
     python example_classification.py
         
 ## Citing the code
