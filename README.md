@@ -49,10 +49,12 @@ Y_pred = classifier.predict(X_test)
 print('Done.\nAccuracy: %f' % accuracy_score(Y_test, Y_pred))
 ```
 
-## Installation
-First you need to have [docker installed](https://docs.docker.com/get-docker/) in your system.
+## Usage
+Clone this repository:
+    
+    git clone https://github.com/albertbup/deep-belief-network.git
 
-Next, build the docker image:
+Next, build the docker image (you'll need to have [docker installed](https://docs.docker.com/get-docker/) in your system.):
 
     docker build --tag albertbup/deep-belief-network:1.0.5 .
 
