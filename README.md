@@ -54,7 +54,7 @@ Clone this repository:
     
     git clone https://github.com/albertbup/deep-belief-network.git
 
-Next, build the docker image (you'll need to have [docker installed](https://docs.docker.com/get-docker/) in your system.):
+Next, build the docker image (you'll need to have [docker installed](https://docs.docker.com/get-docker/) in your system):
 
     docker build --tag albertbup/deep-belief-network:1.0.5 .
 
